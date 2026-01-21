@@ -35,6 +35,7 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const autocompleteRef = useRef<HTMLDivElement>(null);
 
@@ -120,7 +121,19 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
   }, [selectedLanguage]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      const scrollHeight = container.scrollHeight;
+      const height = container.clientHeight;
+      const maxScrollTop = scrollHeight - height;
+      
+      // Instead of scrolling to the absolute bottom, scroll to show the last message
+      // but keep some context above it if possible.
+      container.scrollTo({
+        top: maxScrollTop,
+        behavior: "smooth"
+      });
+    }
   };
 
   const handleSendMessage = async (messageText?: string) => {
@@ -210,21 +223,21 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
     <Card className={`${isEmbedded ? "w-full h-full border-none shadow-none rounded-none" : "fixed bottom-4 right-4 w-full max-w-[calc(100vw-2rem)] sm:w-96 h-[calc(100vh-2rem)] sm:h-[600px] sm:bottom-6 sm:right-6 shadow-2xl z-50 rounded-2xl"} flex flex-col overflow-hidden bg-white`}>
       {!isEmbedded && (
         <div className="p-4 text-white flex items-center justify-between" style={{ backgroundColor: "#E91E63" }}>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="h-10 w-10 rounded-full bg-white/20 flex-shrink-0 flex items-center justify-center">
               <GraduationCap className="h-6 w-6 text-white" />
             </div>
-            <div>
-              <h3 className="font-bold text-sm leading-tight">MySchool Assistant</h3>
-              <p className="text-[10px] opacity-80">Your intelligent guide for portal.myschoolct.com</p>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-bold text-sm leading-tight truncate">MySchool Assistant</h3>
+              <p className="text-[10px] opacity-80 truncate">Your intelligent guide for portal.myschoolct.com</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
             <a 
               href="https://portal.myschoolct.com" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="hidden sm:block px-2 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-[10px] font-medium transition-colors"
+              className="hidden sm:block px-2 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-[10px] font-medium transition-colors max-w-[120px] truncate"
             >
               portal.myschoolct.com
             </a>
@@ -242,7 +255,7 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center p-6 opacity-40">
             <MessageCircle className="h-12 w-12 mb-3" />
