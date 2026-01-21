@@ -190,7 +190,7 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
   const speakText = (text: string) => {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
+      const utterance = new SynthesisUtterance(text);
       utterance.lang = selectedLanguage === 'en' ? 'en-US' : selectedLanguage === 'hi' ? 'hi-IN' : selectedLanguage === 'te' ? 'te-IN' : 'gu-IN';
       utterance.onend = () => setIsSpeaking(false);
       window.speechSynthesis.speak(utterance);
@@ -211,32 +211,32 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
 
   const chatContent = (
     <Card className={`${isEmbedded ? "w-full h-full border-none shadow-none rounded-none" : "fixed bottom-4 right-4 w-full max-w-[calc(100vw-2rem)] sm:w-96 h-[calc(100vh-2rem)] sm:h-[600px] sm:bottom-6 sm:right-6 shadow-2xl z-50 rounded-2xl"} flex flex-col overflow-hidden bg-white`}>
-      <div className="p-4 text-white flex items-center justify-between shrink-0" style={{ backgroundColor: "#E91E63" }}>
-        <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
-          <div className="h-10 w-10 rounded-full bg-white/20 flex-shrink-0 flex items-center justify-center">
-            <GraduationCap className="h-6 w-6 text-white" />
+      {!isEmbedded && (
+        <div className="p-4 text-white flex items-center justify-between shrink-0" style={{ backgroundColor: "#E91E63" }}>
+          <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
+            <div className="h-10 w-10 rounded-full bg-white/20 flex-shrink-0 flex items-center justify-center">
+              <GraduationCap className="h-6 w-6 text-white" />
+            </div>
+            <div className="min-w-0 flex-1 overflow-hidden">
+              <h3 className="font-bold text-sm leading-tight truncate">MySchool Assistant</h3>
+              <p className="text-[10px] opacity-80 truncate">Your intelligent guide for portal.myschoolct.com</p>
+            </div>
           </div>
-          <div className="min-w-0 flex-1 overflow-hidden">
-            <h3 className="font-bold text-sm leading-tight truncate">MySchool Assistant</h3>
-            <p className="text-[10px] opacity-80 truncate">Your intelligent guide for portal.myschoolct.com</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0 ml-2 overflow-hidden">
-          <a 
-            href="https://portal.myschoolct.com" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="hidden sm:block px-2 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-[10px] font-medium transition-colors max-w-[100px] truncate"
-          >
-            portal.myschoolct.com
-          </a>
-          {!isEmbedded && (
+          <div className="flex items-center gap-2 flex-shrink-0 ml-2 overflow-hidden">
+            <a 
+              href="https://portal.myschoolct.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="hidden sm:block px-2 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-[10px] font-medium transition-colors max-w-[100px] truncate"
+            >
+              portal.myschoolct.com
+            </a>
             <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="text-white hover:bg-pink-600 h-8 w-8">
               <X className="h-4 w-4" />
             </Button>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {dailyTip && (
         <div className="px-4 py-2 bg-yellow-50 border-b border-yellow-100 text-[11px] flex items-center gap-2 shrink-0">
