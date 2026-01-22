@@ -299,8 +299,12 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
             {autocompleteQuery.data.images.length > 0 && (
               <div className="p-3 border-b border-gray-50">
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Found Images</div>
-                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                  {autocompleteQuery.data.images.map((img: any) => (
+                <div className="flex gap-2 overflow-x-auto pb-1 pl-1 scrollbar-hide">
+                  {autocompleteQuery.data.images
+                    .filter((img: any, index: number, self: any[]) => 
+                      index === self.findIndex((t) => t.id === img.id || t.url === img.url)
+                    )
+                    .map((img: any) => (
                     <div key={img.id} className="flex-shrink-0 w-16 group cursor-pointer" onClick={() => handleSendMessage(img.title)}>
                       <div className="aspect-square rounded-lg bg-gray-100 overflow-hidden border border-gray-100 group-hover:border-pink-300 transition-colors flex items-center justify-center">
                         {!imageErrors[img.id] ? (
