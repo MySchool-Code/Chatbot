@@ -25,6 +25,7 @@ interface ChatWidgetProps {
 export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetProps = {}) {
   const [isOpen, setIsOpen] = useState(isEmbedded || autoOpen);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [conversationHistory, setConversationHistory] = useState<{role: string, content: string}[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [sessionId, setSessionId] = useState<string>("");
   const [isRecording, setIsRecording] = useState(false);

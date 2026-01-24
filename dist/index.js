@@ -625,53 +625,50 @@ function performPrioritySearch(query) {
     confidence: 0.5
   }];
 }
-function getSuggestions(query) {
-  const results = [];
-  const qLower = query.toLowerCase().trim();
-  const oneClick = myschool_knowledge_base_default.sections.academic.subsections.one_click_resources.resources;
-  for (const r of oneClick) {
-    if (isExactOneClickMatch(qLower, r.keywords)) {
-      results.push({ name: r.name, description: r.keywords.slice(0, 5).join(", "), url: BASE_URL + r.url, category: "one_click", confidence: 0.95 });
-    }
-  }
-  return results.slice(0, 4);
-}
 
-// server/translation_util.ts
-import OpenAI from "openai";
-import dotenv from "dotenv";
-dotenv.config();
-var groq = new OpenAI({
-  apiKey: process.env.GROQ_API_KEY,
-  baseURL: "https://api.groq.com/openai/v1"
-});
-async function translateAndExtractKeyword(text2) {
-  if (/^[a-zA-Z0-9\s.,!?-]+$/.test(text2)) {
-    return { translatedText: text2, keyword: text2 };
-  }
+// server/groqAI.ts
+import Groq from "groq-sdk";
+var groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+var SYSTEM_PROMPT = `You are MySchool Assistant for portal.myschoolct.com.
+
+Your role: Understand user needs, ask clarifying questions if vague, suggest resources.
+
+Available: Class 1-10 (Maths, Science, English, Hindi, Telugu, Social, EVS, Computer), Image Bank (animals, flowers, shapes), Smart Wall, MCQ Bank, Exam Tips, Visual Worksheets.
+
+RESPOND IN JSON ONLY:
+{"message": "friendly response", "searchQuery": "search term or null", "searchType": "class_subject|image_search|text_search|greeting|clarification", "classNum": null, "subject": null, "suggestions": ["sug1", "sug2"]}
+
+Examples:
+"hi" \u2192 {"message": "Hello! What would you like to explore?", "searchQuery": null, "searchType": "greeting", "classNum": null, "subject": null, "suggestions": ["Class 5 Maths", "Animal Images", "Exam Tips"]}
+"maths" \u2192 {"message": "Which class Maths?", "searchQuery": null, "searchType": "clarification", "classNum": null, "subject": "maths", "suggestions": ["Class 3 Maths", "Class 5 Maths", "Class 7 Maths"]}
+"class 5 maths" \u2192 {"message": "Here are Class 5 Maths resources!", "searchQuery": "class 5 maths", "searchType": "class_subject", "classNum": 5, "subject": "maths", "suggestions": ["Class 5 Science", "Class 6 Maths"]}
+"animals" \u2192 {"message": "Searching animal images!", "searchQuery": "animals", "searchType": "text_search", "classNum": null, "subject": null, "suggestions": ["Lion", "Elephant"]}`;
+async function getAIResponse(userMessage, history = []) {
   try {
-    const response = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages: [
-        {
-          role: "system",
-          content: 'You are a translation assistant. Translate the user input to English and extract the most important single keyword for image search. Return JSON format: {"translatedText": "...", "keyword": "..."}'
-        },
-        {
-          role: "user",
-          content: text2
-        }
-      ],
+    const messages = [
+      { role: "system", content: SYSTEM_PROMPT },
+      ...history.slice(-4),
+      { role: "user", content: userMessage }
+    ];
+    const completion = await groq.chat.completions.create({
+      messages,
+      model: "llama-3.1-8b-instant",
+      temperature: 0.3,
+      max_tokens: 300,
       response_format: { type: "json_object" }
     });
-    const result = JSON.parse(response.choices[0].message.content || '{"translatedText": "", "keyword": ""}');
+    const parsed = JSON.parse(completion.choices[0]?.message?.content || "{}");
     return {
-      translatedText: result.translatedText || text2,
-      keyword: result.keyword || text2
+      message: parsed.message || "How can I help?",
+      searchQuery: parsed.searchQuery || null,
+      searchType: parsed.searchType || "greeting",
+      classNum: parsed.classNum || null,
+      subject: parsed.subject || null,
+      suggestions: parsed.suggestions || ["Class 5 Maths", "Animals", "Exam Tips"]
     };
-  } catch (error) {
-    console.error("Translation error:", error);
-    return { translatedText: text2, keyword: text2 };
+  } catch (e) {
+    console.error("Groq error:", e);
+    return { message: "How can I help you today?", searchQuery: null, searchType: "greeting", classNum: null, subject: null, suggestions: ["Class 5 Maths", "Animals"] };
   }
 }
 
@@ -696,137 +693,78 @@ async function logSearchQuery(data) {
 }
 
 // server/routers.ts
-var GREETINGS = ["hi", "hello", "hey", "hii", "hiii", "good morning", "good afternoon", "good evening", "namaste", "howdy", "sup", "yo"];
-var CASUAL_PHRASES = ["how are you", "what's up", "whatsup", "wassup", "thank you", "thanks", "bye", "goodbye", "ok", "okay", "hmm", "what", "who are you", "help"];
-function isGreetingOrCasual(text2) {
-  const lower = text2.toLowerCase().trim();
-  return GREETINGS.some((g) => lower === g || lower.startsWith(g + " ")) || CASUAL_PHRASES.some((p) => lower.includes(p));
-}
-function getInteractiveResponse(text2) {
-  const lower = text2.toLowerCase().trim();
-  if (GREETINGS.some((g) => lower === g || lower.startsWith(g + " "))) {
-    return {
-      response: "Hello! \u{1F44B} I'm your MySchool Assistant. I can help you find educational resources. What are you looking for today?",
-      suggestions: ["Class 5 Maths", "Animals Images", "Telugu Poems", "Science Experiments"]
-    };
+var BASE_URL2 = "https://portal.myschoolct.com";
+function buildSearchUrl(aiResponse) {
+  if (aiResponse.searchType === "class_subject" && aiResponse.classNum) {
+    if (aiResponse.subject) {
+      const subjectCodes = { maths: "mat", science: "sci", english: "eng", hindi: "hin", telugu: "tel", social: "soc", evs: "evs", computer: "com" };
+      const code = subjectCodes[aiResponse.subject.toLowerCase()] || "";
+      if (code) return `${BASE_URL2}/views/academic/class/class-${aiResponse.classNum}?main=1&mu=${code}`;
+    }
+    return `${BASE_URL2}/views/academic/class/class-${aiResponse.classNum}`;
   }
-  if (lower.includes("thank")) {
-    return {
-      response: "You're welcome! \u{1F60A} Is there anything else I can help you find?",
-      suggestions: ["Image Bank", "Smart Wall", "MCQ Bank"]
-    };
+  if (aiResponse.searchQuery) {
+    return `${BASE_URL2}/views/sections/result?text=${encodeURIComponent(aiResponse.searchQuery)}`;
   }
-  if (lower.includes("help") || lower.includes("what can you do")) {
-    return {
-      response: `I can help you find:
-\u2022 **Class Resources** - Try "Class 5 Science"
-\u2022 **Images** - Try "Animals" or "Flowers"
-\u2022 **Study Materials** - Try "MCQ Bank" or "Exam Tips"
-
-Just type what you're looking for!`,
-      suggestions: ["Class 3 English", "Lion Images", "Telugu Stories"]
-    };
-  }
-  if (lower.includes("who are you")) {
-    return {
-      response: "I'm MySchool Assistant - your intelligent guide to portal.myschoolct.com! I help students and teachers find educational resources quickly. Try searching for a topic!",
-      suggestions: ["Animals", "Class 4 Maths", "Smart Wall"]
-    };
-  }
-  return {
-    response: `I'm not sure what you're looking for. Could you try searching for something specific like:
-\u2022 A class and subject (e.g., "Class 5 Science")
-\u2022 An image topic (e.g., "Animals", "Flowers")
-\u2022 A resource (e.g., "MCQ Bank", "Smart Wall")`,
-    suggestions: ["Class 6 Maths", "Tiger Images", "Exam Tips"]
-  };
+  return "";
 }
 var appRouter = router({
   chatbot: router({
-    autocomplete: publicProcedure.input(z.object({
-      query: z.string(),
-      language: z.string().optional()
-    })).query(async ({ input }) => {
-      const { query, language } = input;
-      if (query.length < 2) return { resources: [], images: [] };
-      let processedQuery = query;
-      if (language && language !== "en") {
-        const translation = await translateAndExtractKeyword(query);
-        processedQuery = translation.keyword;
-      }
-      const rawSuggestions = getSuggestions(processedQuery);
-      return {
-        resources: rawSuggestions.map((s) => ({
-          name: s.name,
-          url: s.url,
-          description: s.description
-        })).slice(0, 4),
-        images: []
-      };
+    autocomplete: publicProcedure.input(z.object({ query: z.string(), language: z.string().optional() })).query(async ({ input }) => {
+      if (input.query.length < 2) return { resources: [], images: [] };
+      return { resources: [], images: [] };
     }),
-    chat: publicProcedure.input(
-      z.object({
-        message: z.string(),
-        sessionId: z.string(),
-        language: z.string().optional()
-      })
-    ).mutation(async ({ input }) => {
-      const { message, sessionId, language } = input;
+    chat: publicProcedure.input(z.object({
+      message: z.string(),
+      sessionId: z.string(),
+      language: z.string().optional(),
+      history: z.array(z.object({ role: z.string(), content: z.string() })).optional()
+    })).mutation(async ({ input }) => {
+      const { message, sessionId, language, history } = input;
       try {
-        if (isGreetingOrCasual(message)) {
-          const interactive = getInteractiveResponse(message);
-          saveChatMessage({ sessionId, role: "user", message, language: language || "en" });
-          saveChatMessage({ sessionId, role: "assistant", message: interactive.response, language: language || "en" });
-          return {
-            response: interactive.response,
-            resourceUrl: "",
-            resourceName: "",
-            resourceDescription: "",
-            suggestions: interactive.suggestions
-          };
-        }
-        let queryToSearch = message;
-        let translatedQuery = null;
-        if (language && language !== "en") {
-          const translationResult = await translateAndExtractKeyword(message);
-          translatedQuery = translationResult.translatedText;
-          queryToSearch = translationResult.keyword;
-        }
-        const searchResults = performPrioritySearch(queryToSearch);
-        const topResult = searchResults[0];
-        const isNoMatch = topResult.confidence < 0.3 || topResult.category === "none";
-        let responseText = "";
-        let finalUrl = topResult.url;
-        let finalName = topResult.name;
-        let finalDescription = topResult.description;
-        if (isNoMatch) {
-          responseText = "Relevant results not found. Please find nearest matching results below.";
-          finalUrl = "https://portal.myschoolct.com/views/academic";
-          finalName = "Browse Academic Resources";
-          finalDescription = "Explore all academic resources, classes, and subjects";
-        } else {
-          responseText = `**${topResult.name}**`;
+        const aiResponse = await getAIResponse(message, history || []);
+        let resourceUrl = buildSearchUrl(aiResponse);
+        let resourceName = "";
+        let resourceDescription = "";
+        if (aiResponse.searchQuery && aiResponse.searchType !== "greeting" && aiResponse.searchType !== "clarification") {
+          const searchResults = performPrioritySearch(aiResponse.searchQuery);
+          if (searchResults.length > 0) {
+            resourceUrl = searchResults[0].url;
+            resourceName = searchResults[0].name;
+            resourceDescription = searchResults[0].description;
+          }
         }
         saveChatMessage({ sessionId, role: "user", message, language: language || "en" });
-        saveChatMessage({ sessionId, role: "assistant", message: responseText, language: language || "en" });
-        logSearchQuery({
-          query: message,
-          translatedQuery,
-          language: language || "en",
-          resultsFound: !isNoMatch ? 1 : 0,
-          topResultUrl: finalUrl,
-          topResultName: finalName,
-          sessionId
-        });
+        saveChatMessage({ sessionId, role: "assistant", message: aiResponse.message, language: language || "en" });
+        if (aiResponse.searchQuery) {
+          logSearchQuery({
+            query: message,
+            translatedQuery: null,
+            language: language || "en",
+            resultsFound: resourceUrl ? 1 : 0,
+            topResultUrl: resourceUrl,
+            topResultName: resourceName,
+            sessionId
+          });
+        }
         return {
-          response: responseText,
-          resourceUrl: finalUrl,
-          resourceName: finalName,
-          resourceDescription: finalDescription
+          response: aiResponse.message,
+          resourceUrl,
+          resourceName,
+          resourceDescription,
+          suggestions: aiResponse.suggestions,
+          searchType: aiResponse.searchType
         };
       } catch (error) {
         console.error("Chat error:", error);
-        throw new Error("Internal server error");
+        return {
+          response: "I am here to help! What educational resources are you looking for?",
+          resourceUrl: "",
+          resourceName: "",
+          resourceDescription: "",
+          suggestions: ["Class 5 Maths", "Animal Images", "Exam Tips"],
+          searchType: "greeting"
+        };
       }
     })
   })
