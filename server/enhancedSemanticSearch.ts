@@ -63,10 +63,12 @@ function isMeaningless(q: string): boolean {
   q = q.trim().toLowerCase();
   if (q.length < 2) return true;
   if (!/[a-zA-Z]/.test(q)) return true;
-  if (/[bcdfghjklmnpqrstvwxyz]{4,}/i.test(q)) return true;
   if (!/[aeiou]/i.test(q)) return true;
-  const gibberish = ['xyz', 'qwer', 'asdf', 'zxcv', 'hjkl', 'bnm'];
-  for (const g of gibberish) if (q.includes(g)) return true;
+  // Only check gibberish patterns for short strings
+  if (q.length < 6) {
+    const gibberish = ['xyz', 'qwer', 'asdf', 'zxcv', 'hjkl', 'bnm'];
+    for (const g of gibberish) if (q.includes(g)) return true;
+  }
   return false;
 }
 
