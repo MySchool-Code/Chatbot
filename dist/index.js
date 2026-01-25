@@ -974,6 +974,34 @@ async function fetchPortalResults(query, size = 6) {
     return { results: [], total: 0, query };
   }
 }
+var FALLBACK_SEARCHES = {
+  "default": ["animals", "flowers", "shapes", "numbers", "colors"],
+  "science": ["animals", "plants", "nature", "experiments"],
+  "maths": ["numbers", "shapes", "geometry", "addition"],
+  "english": ["alphabet", "words", "reading", "writing"],
+  "art": ["colors", "drawing", "painting", "shapes"],
+  "food": ["fruits", "vegetables", "food items"],
+  "nature": ["animals", "plants", "flowers", "trees"]
+};
+async function findNearestResults(originalQuery) {
+  console.log(`No results for "${originalQuery}", trying fallback searches...`);
+  const lowerQuery = originalQuery.toLowerCase();
+  let fallbackTerms = FALLBACK_SEARCHES["default"];
+  for (const [category, terms] of Object.entries(FALLBACK_SEARCHES)) {
+    if (lowerQuery.includes(category)) {
+      fallbackTerms = terms;
+      break;
+    }
+  }
+  for (const term of fallbackTerms) {
+    const results = await fetchPortalResults(term, 6);
+    if (results.results.length > 0) {
+      console.log(`Found ${results.results.length} results for fallback term "${term}"`);
+      return results;
+    }
+  }
+  return await fetchPortalResults("educational resources", 6);
+}
 function buildSearchUrl(aiResponse) {
   if (aiResponse.searchType === "class_subject" && aiResponse.classNum) {
     return `${BASE_URL2}/views/academic/class/class-${aiResponse.classNum}`;
@@ -1005,13 +1033,27 @@ var appRouter = router({
         let resourceName = "";
         let resourceDescription = "";
         let thumbnails = [];
+        let usedFallback = false;
         if (aiResponse.searchType === "direct_search" && aiResponse.searchQuery) {
           const portalResults = await fetchPortalResults(aiResponse.searchQuery, 6);
-          thumbnails = portalResults.results;
-          resourceUrl = `${BASE_URL2}/views/sections/result?text=${encodeURIComponent(aiResponse.searchQuery)}`;
+          if (portalResults.results.length === 0) {
+            console.log(`Zero results for "${aiResponse.searchQuery}", using fallback`);
+            const fallbackResults = await findNearestResults(aiResponse.searchQuery);
+            thumbnails = fallbackResults.results;
+            usedFallback = true;
+            if (thumbnails.length > 0) {
+              resourceUrl = `${BASE_URL2}/views/sections/result?text=${encodeURIComponent(fallbackResults.query)}`;
+            }
+          } else {
+            thumbnails = portalResults.results;
+          }
           if (thumbnails.length > 0) {
-            resourceName = `${thumbnails.length} resources found`;
+            resourceName = usedFallback ? `Showing related resources (${thumbnails.length} found)` : `${thumbnails.length} resources found`;
             resourceDescription = thumbnails.map((r) => r.title).slice(0, 3).join(", ");
+          } else {
+            resourceUrl = `${BASE_URL2}/views/sections/result?text=educational+resources`;
+            resourceName = "Explore educational resources";
+            resourceDescription = "Browse our collection of learning materials";
           }
         } else if (aiResponse.searchQuery && aiResponse.searchType !== "greeting") {
           const searchResults = performPrioritySearch(aiResponse.searchQuery);

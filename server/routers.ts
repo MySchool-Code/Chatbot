@@ -39,6 +39,45 @@ async function fetchPortalResults(query: string, size: number = 6): Promise<Port
   }
 }
 
+// Fallback search terms for common queries with no results
+const FALLBACK_SEARCHES: Record<string, string[]> = {
+  "default": ["animals", "flowers", "shapes", "numbers", "colors"],
+  "science": ["animals", "plants", "nature", "experiments"],
+  "maths": ["numbers", "shapes", "geometry", "addition"],
+  "english": ["alphabet", "words", "reading", "writing"],
+  "art": ["colors", "drawing", "painting", "shapes"],
+  "food": ["fruits", "vegetables", "food items"],
+  "nature": ["animals", "plants", "flowers", "trees"]
+};
+
+async function findNearestResults(originalQuery: string): Promise<PortalSearchResponse> {
+  console.log(`No results for "${originalQuery}", trying fallback searches...`);
+  
+  // Try related fallback terms
+  const lowerQuery = originalQuery.toLowerCase();
+  let fallbackTerms = FALLBACK_SEARCHES["default"];
+  
+  // Find matching category
+  for (const [category, terms] of Object.entries(FALLBACK_SEARCHES)) {
+    if (lowerQuery.includes(category)) {
+      fallbackTerms = terms;
+      break;
+    }
+  }
+  
+  // Try each fallback term
+  for (const term of fallbackTerms) {
+    const results = await fetchPortalResults(term, 6);
+    if (results.results.length > 0) {
+      console.log(`Found ${results.results.length} results for fallback term "${term}"`);
+      return results;
+    }
+  }
+  
+  // Last resort: try "educational resources"
+  return await fetchPortalResults("educational resources", 6);
+}
+
 function buildSearchUrl(aiResponse: any): string {
   // For class-based queries, use simple class URL without parameters
   if (aiResponse.searchType === "class_subject" && aiResponse.classNum) {
@@ -86,18 +125,38 @@ export const appRouter = router({
           let resourceName = "";
           let resourceDescription = "";
           let thumbnails: PortalResult[] = [];
+          let usedFallback = false;
 
           // For direct searches, fetch portal results with thumbnails
           if (aiResponse.searchType === "direct_search" && aiResponse.searchQuery) {
             const portalResults = await fetchPortalResults(aiResponse.searchQuery, 6);
-            thumbnails = portalResults.results;
             
-            // Use portal search URL
-            resourceUrl = `${BASE_URL}/views/sections/result?text=${encodeURIComponent(aiResponse.searchQuery)}`;
+            // CRITICAL: If no results, try fallback searches
+            if (portalResults.results.length === 0) {
+              console.log(`Zero results for "${aiResponse.searchQuery}", using fallback`);
+              const fallbackResults = await findNearestResults(aiResponse.searchQuery);
+              thumbnails = fallbackResults.results;
+              usedFallback = true;
+              
+              // Update URL to show fallback search term if we have results
+              if (thumbnails.length > 0) {
+                resourceUrl = `${BASE_URL}/views/sections/result?text=${encodeURIComponent(fallbackResults.query)}`;
+              }
+            } else {
+              thumbnails = portalResults.results;
+            }
             
+            // Build resource info
             if (thumbnails.length > 0) {
-              resourceName = `${thumbnails.length} resources found`;
+              resourceName = usedFallback 
+                ? `Showing related resources (${thumbnails.length} found)` 
+                : `${thumbnails.length} resources found`;
               resourceDescription = thumbnails.map(r => r.title).slice(0, 3).join(", ");
+            } else {
+              // Absolute fallback: if still no results, show generic educational content
+              resourceUrl = `${BASE_URL}/views/sections/result?text=educational+resources`;
+              resourceName = "Explore educational resources";
+              resourceDescription = "Browse our collection of learning materials";
             }
           } else if (aiResponse.searchQuery && aiResponse.searchType !== "greeting") {
             // Fallback to priority search for class_subject
