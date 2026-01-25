@@ -1148,8 +1148,18 @@ var appRouter = router({
             resourceUrl = `${BASE_URL}/views/academic`;
           }
         }
-        await saveChatMessage(sessionId, "user", message, language || "en");
-        await saveChatMessage(sessionId, "assistant", aiResponse.message, "en");
+        await saveChatMessage({
+          sessionId,
+          role: "user",
+          message,
+          language: language || "en"
+        });
+        await saveChatMessage({
+          sessionId,
+          role: "assistant",
+          message: finalMessage,
+          language: "en"
+        });
         if (aiResponse.searchQuery) {
           await logSearchQuery({
             sessionId,

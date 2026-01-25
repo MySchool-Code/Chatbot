@@ -195,18 +195,8 @@ export const appRouter = router({
           }
 
           // Save chat messages
-          await saveChatMessage({
-            sessionId,
-            role: "user",
-            message,
-            language: language || "en",
-          });
-          await saveChatMessage({
-            sessionId,
-            role: "assistant",
-            message: finalMessage,
-            language: "en",
-          });
+          await saveChatMessage(sessionId, "user", message, language || "en");
+          await saveChatMessage(sessionId, "assistant", aiResponse.message, "en");
 
           // Log search
           if (aiResponse.searchQuery) {
