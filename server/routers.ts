@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, publicProcedure } from "./_core/trpc";
-import { performPrioritySearch } from "./enhancedSemanticSearch";
+import { performPrioritySearch, correctSpelling } from "./enhancedSemanticSearch";
 import { getAIResponse } from "./groqAI";
 import { saveChatMessage } from "./chatbotDb";
 import { logSearchQuery } from "./analyticsDb";
@@ -42,8 +42,11 @@ export const appRouter = router({
         const { message, sessionId, language, history } = input;
 
         try {
+          // Apply spell correction to the user's message
+          const correctedMessage = correctSpelling(message);
+          
           // Get AI response with conversation context
-          const aiResponse = await getAIResponse(message, history || []);
+          const aiResponse = await getAIResponse(correctedMessage, history || []);
           
           // Build URL based on AI understanding
           let resourceUrl = buildSearchUrl(aiResponse);
@@ -67,7 +70,7 @@ export const appRouter = router({
           if (aiResponse.searchQuery) {
             logSearchQuery({
               query: message,
-              translatedQuery: null,
+              translatedQuery: correctedMessage !== message ? correctedMessage : null,
               language: language || "en",
               resultsFound: resourceUrl ? 1 : 0,
               topResultUrl: resourceUrl,

@@ -22,6 +22,13 @@ interface ChatWidgetProps {
   isEmbedded?: boolean;
 }
 
+const LANGUAGE_NAMES: Record<string, string> = {
+  en: "English",
+  hi: "Hindi",
+  te: "Telugu",
+  gu: "Gujarati"
+};
+
 export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetProps = {}) {
   const [isOpen, setIsOpen] = useState(isEmbedded || autoOpen);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -30,6 +37,7 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
   const [sessionId, setSessionId] = useState<string>("");
   const [isRecording, setIsRecording] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<string>("en");
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
   const [dailyTip, setDailyTip] = useState<string>("");
@@ -51,6 +59,7 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
     const savedSessionId = localStorage.getItem("myschool_chat_session");
     const savedLanguage = localStorage.getItem("myschool_chat_language");
     const savedHistory = localStorage.getItem("myschool_search_history");
+    const savedVoice = localStorage.getItem("myschool_voice_enabled");
     
     if (savedSessionId) {
       setSessionId(savedSessionId);
@@ -68,6 +77,10 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
       try {
         setSearchHistory(JSON.parse(savedHistory));
       } catch (e) {}
+    }
+
+    if (savedVoice === "true") {
+      setVoiceEnabled(true);
     }
     
     setupSpeechRecognition();
@@ -124,6 +137,15 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
     }
   }, [selectedLanguage]);
 
+  const toggleVoice = () => {
+    const newValue = !voiceEnabled;
+    setVoiceEnabled(newValue);
+    localStorage.setItem("myschool_voice_enabled", String(newValue));
+    if (!newValue && isSpeaking) {
+      stopSpeaking();
+    }
+  };
+
   const handleSendMessage = async (messageText?: string) => {
     const textToSend = messageText || inputValue.trim();
     if (!textToSend) return;
@@ -164,7 +186,8 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
 
       setMessages((prev) => [...prev, assistantMessage]);
       
-      if (isSpeaking) {
+      // Speak if voice is enabled
+      if (voiceEnabled) {
         const plainText = response.response.replace(/[*_~`#\[\]()]/g, "");
         speakText(plainText);
       }
@@ -191,7 +214,7 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
   const speakText = (text: string) => {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
-      const utterance = new SynthesisUtterance(text);
+      const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = selectedLanguage === 'en' ? 'en-US' : selectedLanguage === 'hi' ? 'hi-IN' : selectedLanguage === 'te' ? 'te-IN' : 'gu-IN';
       utterance.onend = () => setIsSpeaking(false);
       window.speechSynthesis.speak(utterance);
@@ -210,6 +233,17 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
     setImageErrors(prev => ({ ...prev, [id]: true }));
   };
 
+  // Deduplicate images by id and url
+  const getUniqueImages = (images: any[]) => {
+    const seen = new Set<string>();
+    return images.filter((img: any) => {
+      const key = img.id || img.url;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+
   const chatContent = (
     <Card className={`${isEmbedded ? "w-full h-full border-none shadow-none rounded-none" : "fixed bottom-4 right-4 w-full max-w-[calc(100vw-2rem)] sm:w-96 h-[calc(100vh-2rem)] sm:h-[600px] sm:bottom-6 sm:right-6 shadow-2xl z-50 rounded-2xl"} flex flex-col overflow-hidden bg-white`}>
       {!isEmbedded && (
@@ -224,6 +258,10 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0 ml-2 overflow-hidden">
+            {/* Display selected language in header */}
+            <div className="bg-white/20 px-2 py-1 rounded-md text-xs font-medium">
+              {LANGUAGE_NAMES[selectedLanguage] || "English"}
+            </div>
             <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="text-white hover:bg-pink-600 h-8 w-8">
               <X className="h-4 w-4" />
             </Button>
@@ -233,7 +271,7 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
 
       {dailyTip && (
         <div className="px-4 py-2 bg-yellow-50 border-b border-yellow-100 text-[11px] flex items-center gap-2 shrink-0">
-          <span className="font-bold text-yellow-800">💡 Tip:</span>
+          <span className="font-bold text-yellow-800">Tip:</span>
           <span className="text-yellow-700 truncate">{dailyTip}</span>
         </div>
       )}
@@ -300,12 +338,9 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
             {autocompleteQuery.data.images.length > 0 && (
               <div className="p-3 border-b border-gray-50">
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Found Images</div>
-                <div className="flex gap-2 overflow-x-auto pb-1 pl-1 scrollbar-hide">
-                  {autocompleteQuery.data.images
-                    .filter((img: any, index: number, self: any[]) => 
-                      index === self.findIndex((t) => t.id === img.id || t.url === img.url)
-                    )
-                    .map((img: any) => (
+                {/* Fixed: Added px-2 for left padding so images don't touch the border */}
+                <div className="flex gap-3 overflow-x-auto pb-1 px-2 scrollbar-hide">
+                  {getUniqueImages(autocompleteQuery.data.images).map((img: any) => (
                     <div key={img.id} className="flex-shrink-0 w-16 group cursor-pointer" onClick={() => handleSendMessage(img.title)}>
                       <div className="aspect-square rounded-lg bg-gray-100 overflow-hidden border border-gray-100 group-hover:border-pink-300 transition-colors flex items-center justify-center">
                         {!imageErrors[img.id] ? (
@@ -357,11 +392,18 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
         )}
 
         <div className="flex gap-2 items-center">
-          <Button variant="outline" size="icon" onClick={() => setShowLanguageMenu(!showLanguageMenu)} className="h-9 w-9 rounded-xl border-gray-200">
+          <Button variant="outline" size="icon" onClick={() => setShowLanguageMenu(!showLanguageMenu)} className="h-9 w-9 rounded-xl border-gray-200" title="Change Language">
             <Languages className="h-4 w-4 text-gray-600" />
           </Button>
-          <Button variant="outline" size="icon" onClick={isSpeaking ? stopSpeaking : () => {}} className={`h-9 w-9 rounded-xl border-gray-200 ${isSpeaking ? "bg-green-50 border-green-200" : ""}`}>
-            {isSpeaking ? <Volume2 className="h-4 w-4 text-green-600" /> : <VolumeX className="h-4 w-4 text-gray-600" />}
+          {/* Fixed: Voice toggle button now enables/disables voice responses */}
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={toggleVoice} 
+            className={`h-9 w-9 rounded-xl border-gray-200 ${voiceEnabled ? "bg-green-50 border-green-200" : ""}`}
+            title={voiceEnabled ? "Voice responses ON - Click to disable" : "Voice responses OFF - Click to enable"}
+          >
+            {voiceEnabled ? <Volume2 className="h-4 w-4 text-green-600" /> : <VolumeX className="h-4 w-4 text-gray-600" />}
           </Button>
           <div className="flex-1 relative">
             <Input
@@ -375,7 +417,7 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
               className="h-10 rounded-xl border-gray-200 focus-visible:ring-[#E91E63] pr-10"
             />
           </div>
-          <Button variant="outline" size="icon" onClick={startListening} className={`h-10 w-10 rounded-xl border-gray-200 ${isRecording ? "bg-pink-50 border-pink-200" : ""}`}>
+          <Button variant="outline" size="icon" onClick={startListening} className={`h-10 w-10 rounded-xl border-gray-200 ${isRecording ? "bg-pink-50 border-pink-200" : ""}`} title="Voice input">
             <Mic className={`h-4 w-4 ${isRecording ? "text-pink-600 animate-pulse" : "text-gray-600"}`} />
           </Button>
           <Button onClick={() => handleSendMessage()} disabled={!inputValue.trim() || chatMutation.isPending} className="h-10 w-10 rounded-xl shadow-md" style={{ backgroundColor: "#E91E63" }}>
@@ -403,7 +445,7 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
         {showLanguageMenu && (
           <div className="pt-2 border-t border-gray-50">
             <div className="flex flex-wrap gap-1.5">
-              {[{ name: "English", code: "en", flag: "🇺🇸" }, { name: "Hindi", code: "hi", flag: "🇮🇳" }, { name: "Telugu", code: "te", flag: "🇮🇳" }, { name: "Gujarati", code: "gu", flag: "🇮🇳" }].map((lang) => (
+              {[{ name: "English", code: "en", flag: "EN" }, { name: "Hindi", code: "hi", flag: "HI" }, { name: "Telugu", code: "te", flag: "TE" }, { name: "Gujarati", code: "gu", flag: "GU" }].map((lang) => (
                 <Button
                   key={lang.code}
                   variant={selectedLanguage === lang.code ? "default" : "outline"}
