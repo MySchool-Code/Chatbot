@@ -819,7 +819,9 @@ function performPrioritySearch(query) {
 
 // server/groqAI.ts
 import Groq from "groq-sdk";
-var groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+var groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY
+});
 var SYSTEM_PROMPT = `You are MySchool Assistant for portal.myschoolct.com.
 
 Your role: Help users find educational resources quickly. For most searches, route directly to results.
@@ -835,22 +837,23 @@ Rules:
 3. For "class X subject" WITH CLASS NUMBER \u2192 class_subject with classNum and subject
 4. For subject name WITHOUT class number (e.g., "maths", "science", "english") \u2192 direct_search, NOT class_subject
 5. For gibberish/invalid input (e.g., ";iajsdfj", "asdfgh", random characters) \u2192 invalid type with searchQuery "academic"
-6. For "interview", "interviews", "preparation" \u2192 search for "exam tips"
+6. INTERVIEW MAPPING (CRITICAL):
+   - For "interview", "interviews", "interview tips", "interview preparation", "interview questions", "job interview", "how to prepare for interview" \u2192 direct_search with searchQuery "exam tips"
+   - Message: "Great! Here are exam tips to help you prepare."
 7. Default: direct_search
 
 IMPORTANT: 
 - Only use class_subject if you can extract a CLASS NUMBER (1-10)
 - If input is clearly gibberish (random characters, no meaning), use "invalid" type
-- "interview" queries should search for "exam tips"
+- Always map interview-related queries to "exam tips" search
 
 Examples:
-"monkey" \u2192 {"message": "Here are monkey resources!", "searchQuery": "monkey", "searchType": "direct_search", "classNum": null, "subject": null, "suggestions": []}
-"interview" \u2192 {"message": "Here are exam tips to help you prepare!", "searchQuery": "exam tips", "searchType": "direct_search", "classNum": null, "subject": null, "suggestions": []}
-"interview preparation" \u2192 {"message": "Here are exam tips!", "searchQuery": "exam tips", "searchType": "direct_search", "classNum": null, "subject": null, "suggestions": []}
-"maths" \u2192 {"message": "Here are maths resources!", "searchQuery": "maths", "searchType": "direct_search", "classNum": null, "subject": null, "suggestions": []}
-"class 5 maths" \u2192 {"message": "Opening Class 5 Maths!", "searchQuery": "class 5 maths", "searchType": "class_subject", "classNum": 5, "subject": "maths", "suggestions": []}
-"hi" \u2192 {"message": "Hello! What would you like to explore?", "searchQuery": null, "searchType": "greeting", "classNum": null, "subject": null, "suggestions": ["Animals", "Class 5 Maths", "Exam Tips"]}
-";iajsdfj" \u2192 {"message": "Invalid input. Please find academic resources below!", "searchQuery": "academic", "searchType": "invalid", "classNum": null, "subject": null, "suggestions": ["Class 1", "Class 5", "Animals", "Shapes"]}`;
+- "interview" \u2192 {"message": "Great! Here are exam tips to help you prepare.", "searchQuery": "exam tips", "searchType": "direct_search", "classNum": null, "subject": null, "suggestions": ["exam preparation", "study tips", "test strategies"]}
+- "interview tips" \u2192 {"message": "Great! Here are exam tips to help you prepare.", "searchQuery": "exam tips", "searchType": "direct_search", "classNum": null, "subject": null, "suggestions": []}
+- "monkey" \u2192 {"message": "Here are monkey resources!", "searchQuery": "monkey", "searchType": "direct_search", "classNum": null, "subject": null, "suggestions": []}
+- "class 5 maths" \u2192 {"message": "Opening Class 5 Maths!", "searchQuery": null, "searchType": "class_subject", "classNum": 5, "subject": "maths", "suggestions": []}
+- "maths" \u2192 {"message": "Here are maths resources!", "searchQuery": "maths", "searchType": "direct_search", "classNum": null, "subject": null, "suggestions": []}
+`;
 async function getAIResponse(userMessage, history = []) {
   try {
     const messages = [
@@ -874,15 +877,15 @@ async function getAIResponse(userMessage, history = []) {
       subject: parsed.subject || null,
       suggestions: parsed.suggestions || []
     };
-  } catch (e) {
-    console.error("Groq error:", e);
+  } catch (error) {
+    console.error("Groq error:", error);
     return {
-      message: "How can I help you today?",
+      message: "Hello! How can I help you find educational resources today?",
       searchQuery: null,
       searchType: "greeting",
       classNum: null,
       subject: null,
-      suggestions: ["Animals", "Class 5 Maths", "Exam Tips"]
+      suggestions: ["Search for animals", "Explore Class 5 Maths", "Find exam tips"]
     };
   }
 }
