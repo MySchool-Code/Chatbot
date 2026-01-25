@@ -1,7 +1,43 @@
 import { ChatWidget } from "@/components/ChatWidget";
 import { GraduationCap } from "lucide-react";
+import { useState, useEffect } from "react";
+
+const LANGUAGE_NAMES: Record<string, string> = {
+  en: "English",
+  hi: "Hindi",
+  te: "Telugu",
+  gu: "Gujarati"
+};
 
 export default function Home() {
+  const [selectedLanguage, setSelectedLanguage] = useState<string>("en");
+
+  // Sync language with localStorage on mount and listen for changes
+  useEffect(() => {
+    const savedLanguage = localStorage.getItem("myschool_chat_language");
+    if (savedLanguage) {
+      setSelectedLanguage(savedLanguage);
+    }
+
+    // Listen for storage changes (when ChatWidget changes language)
+    const handleStorage = () => {
+      const lang = localStorage.getItem("myschool_chat_language");
+      if (lang) setSelectedLanguage(lang);
+    };
+    window.addEventListener("storage", handleStorage);
+
+    // Also poll for changes since storage event doesn't fire in same tab
+    const interval = setInterval(() => {
+      const lang = localStorage.getItem("myschool_chat_language");
+      if (lang && lang !== selectedLanguage) setSelectedLanguage(lang);
+    }, 500);
+
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      clearInterval(interval);
+    };
+  }, [selectedLanguage]);
+
   return (
     <div className="h-screen w-full flex flex-col bg-white overflow-hidden">
       {/* Sticky Header - Never scrolls */}
@@ -14,6 +50,10 @@ export default function Home() {
             <h1 className="text-lg font-bold">MySchool Assistant</h1>
             <p className="text-xs opacity-80">Your intelligent guide for portal.myschoolct.com</p>
           </div>
+        </div>
+        {/* Display selected language */}
+        <div className="bg-white/20 px-3 py-1.5 rounded-lg text-sm font-medium">
+          {LANGUAGE_NAMES[selectedLanguage] || "English"}
         </div>
       </div>
       

@@ -591,7 +591,6 @@ var COMMON_WORDS = {
   // Puzzle variations
   "puzle": "puzzle",
   "puzel": "puzzle",
-  "puzzel": "puzzle",
   "puzzles": "puzzle",
   "puzles": "puzzle",
   "puzzl": "puzzle",
