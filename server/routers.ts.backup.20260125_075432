@@ -5,7 +5,6 @@ import { getAIResponse } from "./groqAI";
 import { saveChatMessage } from "./chatbotDb";
 import { logSearchQuery } from "./analyticsDb";
 import { translateAndExtractKeyword } from "./translation_util";
-import { advancedSearch, enhanceSearchQuery, autoCorrect } from "./advancedSearch";
 
 const BASE_URL = "https://portal.myschoolct.com";
 const PORTAL_API = "https://portal.myschoolct.com/api/rest/search/global";
