@@ -1019,7 +1019,7 @@ function buildSearchUrl(aiResponse) {
     return `${BASE_URL2}/views/academic/class/class-${aiResponse.classNum}`;
   }
   if (aiResponse.searchQuery) {
-    return `${BASE_URL2}/views/sections/result?text=${encodeURIComponent(aiResponse.searchQuery)}`;
+    return `${BASE_URL2}/views/result?text=${encodeURIComponent(aiResponse.searchQuery)}`;
   }
   return "";
 }
@@ -1055,7 +1055,7 @@ var appRouter = router({
             thumbnails = fallbackResults.results;
             usedFallback = true;
             if (thumbnails.length > 0) {
-              resourceUrl = `${BASE_URL2}/views/sections/result?text=${encodeURIComponent(fallbackResults.query)}`;
+              resourceUrl = `${BASE_URL2}/views/result?text=${encodeURIComponent(fallbackResults.query)}`;
             }
           } else {
             thumbnails = portalResults.results;
@@ -1065,7 +1065,7 @@ var appRouter = router({
             resourceName = usedFallback ? `Showing related resources (${thumbnails.length} found)` : `${thumbnails.length} resources found`;
             resourceDescription = thumbnails.map((r) => r.title).slice(0, 3).join(", ");
           } else {
-            resourceUrl = `${BASE_URL2}/views/sections/result?text=educational+resources`;
+            resourceUrl = `${BASE_URL2}/views/result?text=educational+resources`;
             resourceName = "Explore educational resources";
             resourceDescription = "Browse our collection of learning materials";
           }

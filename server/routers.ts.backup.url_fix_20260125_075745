@@ -90,7 +90,7 @@ function buildSearchUrl(aiResponse: any): string {
   }
   // For all other queries, use search results
   if (aiResponse.searchQuery) {
-    return `${BASE_URL}/views/result?text=${encodeURIComponent(aiResponse.searchQuery)}`;
+    return `${BASE_URL}/views/sections/result?text=${encodeURIComponent(aiResponse.searchQuery)}`;
   }
   return "";
 }
@@ -146,7 +146,7 @@ export const appRouter = router({
               
               // Update URL to show fallback search term if we have results
               if (thumbnails.length > 0) {
-                resourceUrl = `${BASE_URL}/views/result?text=${encodeURIComponent(fallbackResults.query)}`;
+                resourceUrl = `${BASE_URL}/views/sections/result?text=${encodeURIComponent(fallbackResults.query)}`;
               }
             } else {
               thumbnails = portalResults.results;
@@ -161,7 +161,7 @@ export const appRouter = router({
               resourceDescription = thumbnails.map(r => r.title).slice(0, 3).join(", ");
             } else {
               // Absolute fallback: if still no results, show generic educational content
-              resourceUrl = `${BASE_URL}/views/result?text=educational+resources`;
+              resourceUrl = `${BASE_URL}/views/sections/result?text=educational+resources`;
               resourceName = "Explore educational resources";
               resourceDescription = "Browse our collection of learning materials";
             }
