@@ -7,11 +7,46 @@ import { logSearchQuery } from "./analyticsDb";
 import { translateAndExtractKeyword } from "./translation_util";
 
 const BASE_URL = "https://portal.myschoolct.com";
+const PORTAL_API = "https://portal.myschoolct.com/api/rest/search/global";
+
+interface PortalResult {
+  path: string;
+  title: string;
+  category: string;
+  thumbnail: string;
+  type: string;
+  tags: string[];
+}
+
+interface PortalSearchResponse {
+  results: PortalResult[];
+  total: number;
+  query: string;
+  expanded_terms?: string[];
+}
+
+async function fetchPortalResults(query: string, size: number = 6): Promise<PortalSearchResponse> {
+  try {
+    const response = await fetch(`${PORTAL_API}?query=${encodeURIComponent(query)}&size=${size}`);
+    if (!response.ok) {
+      console.error("Portal API error:", response.status);
+      return { results: [], total: 0, query };
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to fetch portal results:", error);
+    return { results: [], total: 0, query };
+  }
+}
 
 function buildSearchUrl(aiResponse: any): string {
   if (aiResponse.searchType === "class_subject" && aiResponse.classNum) {
     if (aiResponse.subject) {
-      const subjectCodes: any = { maths: "mat", science: "sci", english: "eng", hindi: "hin", telugu: "tel", social: "soc", evs: "evs", computer: "com" };
+      const subjectCodes: any = { 
+        maths: "mat", science: "sci", english: "eng", 
+        hindi: "hin", telugu: "tel", social: "soc", 
+        evs: "evs", computer: "com" 
+      };
       const code = subjectCodes[aiResponse.subject.toLowerCase()] || "";
       if (code) return `${BASE_URL}/views/academic/class/class-${aiResponse.classNum}?main=1&mu=${code}`;
     }
@@ -43,23 +78,36 @@ export const appRouter = router({
         const { message, sessionId, language, history } = input;
 
         try {
-          // Step 1: Detect and translate non-English queries (Telugu, Hindi, Gujarati, etc.)
+          // Step 1: Detect and translate non-English queries
           const translationResult = await translateAndExtractKeyword(message);
           const translatedMessage = translationResult.translatedText;
           
-          // Step 2: Apply spell correction to the translated/original message
+          // Step 2: Apply spell correction
           const correctedMessage = correctSpelling(translatedMessage);
           
-          // Get AI response with conversation context
+          // Step 3: Get AI response
           const aiResponse = await getAIResponse(correctedMessage, history || []);
           
-          // Build URL based on AI understanding
+          // Step 4: Build URL and fetch thumbnails
           let resourceUrl = buildSearchUrl(aiResponse);
           let resourceName = "";
           let resourceDescription = "";
+          let thumbnails: PortalResult[] = [];
 
-          // If AI identified a search, use our search logic for URL
-          if (aiResponse.searchQuery && aiResponse.searchType !== "greeting" && aiResponse.searchType !== "clarification") {
+          // For direct searches, fetch portal results with thumbnails
+          if (aiResponse.searchType === "direct_search" && aiResponse.searchQuery) {
+            const portalResults = await fetchPortalResults(aiResponse.searchQuery, 6);
+            thumbnails = portalResults.results;
+            
+            // Use portal search URL
+            resourceUrl = `${BASE_URL}/views/sections/result?text=${encodeURIComponent(aiResponse.searchQuery)}`;
+            
+            if (thumbnails.length > 0) {
+              resourceName = `${thumbnails.length} resources found`;
+              resourceDescription = thumbnails.map(r => r.title).slice(0, 3).join(", ");
+            }
+          } else if (aiResponse.searchQuery && aiResponse.searchType !== "greeting") {
+            // Fallback to priority search for class_subject
             const searchResults = performPrioritySearch(aiResponse.searchQuery);
             if (searchResults.length > 0) {
               resourceUrl = searchResults[0].url;
@@ -77,7 +125,7 @@ export const appRouter = router({
               query: message,
               translatedQuery: translatedMessage !== message ? translatedMessage : null,
               language: language || "en",
-              resultsFound: resourceUrl ? 1 : 0,
+              resultsFound: thumbnails.length || (resourceUrl ? 1 : 0),
               topResultUrl: resourceUrl,
               topResultName: resourceName,
               sessionId
@@ -90,7 +138,13 @@ export const appRouter = router({
             resourceName,
             resourceDescription,
             suggestions: aiResponse.suggestions,
-            searchType: aiResponse.searchType
+            searchType: aiResponse.searchType,
+            thumbnails: thumbnails.map(t => ({
+              url: t.path,
+              thumbnail: t.thumbnail,
+              title: t.title,
+              category: t.category
+            }))
           };
 
         } catch (error) {
@@ -100,8 +154,9 @@ export const appRouter = router({
             resourceUrl: "",
             resourceName: "",
             resourceDescription: "",
-            suggestions: ["Class 5 Maths", "Animal Images", "Exam Tips"],
-            searchType: "greeting"
+            suggestions: ["Animals", "Class 5 Maths", "Exam Tips"],
+            searchType: "greeting",
+            thumbnails: []
           };
         }
       }),

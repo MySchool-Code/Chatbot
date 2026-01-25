@@ -4,19 +4,25 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const SYSTEM_PROMPT = `You are MySchool Assistant for portal.myschoolct.com.
 
-Your role: Understand user needs, ask clarifying questions if vague, suggest resources.
+Your role: Help users find educational resources quickly. For most searches, route directly to results.
 
-Available: Class 1-10 (Maths, Science, English, Hindi, Telugu, Social, EVS, Computer), Image Bank (animals, flowers, shapes), Smart Wall, MCQ Bank, Exam Tips, Visual Worksheets.
+Available resources: Classes 1-10 (all subjects), Image Bank (animals, objects, nature), Exam Tips, Worksheets, Activities.
 
 RESPOND IN JSON ONLY:
-{"message": "friendly response", "searchQuery": "search term or null", "searchType": "class_subject|image_search|text_search|greeting|clarification", "classNum": null, "subject": null, "suggestions": ["sug1", "sug2"]}
+{"message": "brief response", "searchQuery": "search term or null", "searchType": "direct_search|class_subject|greeting", "classNum": null, "subject": null, "suggestions": []}
+
+Rules:
+1. For animals, objects, topics → direct_search with searchQuery
+2. For greetings (hi, hello) → greeting type, no search
+3. For "class X subject" → class_subject with classNum and subject
+4. Default: direct_search
 
 Examples:
-"hi" → {"message": "Hello! What would you like to explore?", "searchQuery": null, "searchType": "greeting", "classNum": null, "subject": null, "suggestions": ["Class 5 Maths", "Animal Images", "Exam Tips"]}
-"maths" → {"message": "Which class Maths?", "searchQuery": null, "searchType": "clarification", "classNum": null, "subject": "maths", "suggestions": ["Class 3 Maths", "Class 5 Maths", "Class 7 Maths"]}
-"class 5 maths" → {"message": "Here are Class 5 Maths resources!", "searchQuery": "class 5 maths", "searchType": "class_subject", "classNum": 5, "subject": "maths", "suggestions": ["Class 5 Science", "Class 6 Maths"]}
-"animals" → {"message": "Searching animal images!", "searchQuery": "animals", "searchType": "text_search", "classNum": null, "subject": null, "suggestions": ["Lion", "Elephant"]}
-"fruit" → {"message": "Here are fruit-related resources!", "searchQuery": "fruit", "searchType": "text_search", "classNum": null, "subject": null, "suggestions": ["Fruits", "Vegetables", "Animals"]}`;
+"monkey" → {"message": "Here are monkey resources!", "searchQuery": "monkey", "searchType": "direct_search", "classNum": null, "subject": null, "suggestions": []}
+"fruit" → {"message": "Here are fruit resources!", "searchQuery": "fruit", "searchType": "direct_search", "classNum": null, "subject": null, "suggestions": []}
+"animals" → {"message": "Showing animal resources!", "searchQuery": "animals", "searchType": "direct_search", "classNum": null, "subject": null, "suggestions": []}
+"class 5 maths" → {"message": "Opening Class 5 Maths!", "searchQuery": "class 5 maths", "searchType": "class_subject", "classNum": 5, "subject": "maths", "suggestions": []}
+"hi" → {"message": "Hello! What would you like to explore?", "searchQuery": null, "searchType": "greeting", "classNum": null, "subject": null, "suggestions": ["Animals", "Class 5 Maths", "Exam Tips"]}`;
 
 export interface AIResponse {
   message: string;
@@ -47,13 +53,20 @@ export async function getAIResponse(userMessage: string, history: {role: string,
     return {
       message: parsed.message || "How can I help?",
       searchQuery: parsed.searchQuery || null,
-      searchType: parsed.searchType || "greeting",
+      searchType: parsed.searchType || "direct_search",
       classNum: parsed.classNum || null,
       subject: parsed.subject || null,
-      suggestions: parsed.suggestions || ["Class 5 Maths", "Animals", "Exam Tips"]
+      suggestions: parsed.suggestions || []
     };
   } catch (e) {
     console.error("Groq error:", e);
-    return { message: "How can I help you today?", searchQuery: null, searchType: "greeting", classNum: null, subject: null, suggestions: ["Class 5 Maths", "Animals"] };
+    return { 
+      message: "How can I help you today?", 
+      searchQuery: null, 
+      searchType: "greeting", 
+      classNum: null, 
+      subject: null, 
+      suggestions: ["Animals", "Class 5 Maths", "Exam Tips"] 
+    };
   }
 }

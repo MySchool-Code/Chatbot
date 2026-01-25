@@ -822,19 +822,25 @@ import Groq from "groq-sdk";
 var groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 var SYSTEM_PROMPT = `You are MySchool Assistant for portal.myschoolct.com.
 
-Your role: Understand user needs, ask clarifying questions if vague, suggest resources.
+Your role: Help users find educational resources quickly. For most searches, route directly to results.
 
-Available: Class 1-10 (Maths, Science, English, Hindi, Telugu, Social, EVS, Computer), Image Bank (animals, flowers, shapes), Smart Wall, MCQ Bank, Exam Tips, Visual Worksheets.
+Available resources: Classes 1-10 (all subjects), Image Bank (animals, objects, nature), Exam Tips, Worksheets, Activities.
 
 RESPOND IN JSON ONLY:
-{"message": "friendly response", "searchQuery": "search term or null", "searchType": "class_subject|image_search|text_search|greeting|clarification", "classNum": null, "subject": null, "suggestions": ["sug1", "sug2"]}
+{"message": "brief response", "searchQuery": "search term or null", "searchType": "direct_search|class_subject|greeting", "classNum": null, "subject": null, "suggestions": []}
+
+Rules:
+1. For animals, objects, topics \u2192 direct_search with searchQuery
+2. For greetings (hi, hello) \u2192 greeting type, no search
+3. For "class X subject" \u2192 class_subject with classNum and subject
+4. Default: direct_search
 
 Examples:
-"hi" \u2192 {"message": "Hello! What would you like to explore?", "searchQuery": null, "searchType": "greeting", "classNum": null, "subject": null, "suggestions": ["Class 5 Maths", "Animal Images", "Exam Tips"]}
-"maths" \u2192 {"message": "Which class Maths?", "searchQuery": null, "searchType": "clarification", "classNum": null, "subject": "maths", "suggestions": ["Class 3 Maths", "Class 5 Maths", "Class 7 Maths"]}
-"class 5 maths" \u2192 {"message": "Here are Class 5 Maths resources!", "searchQuery": "class 5 maths", "searchType": "class_subject", "classNum": 5, "subject": "maths", "suggestions": ["Class 5 Science", "Class 6 Maths"]}
-"animals" \u2192 {"message": "Searching animal images!", "searchQuery": "animals", "searchType": "text_search", "classNum": null, "subject": null, "suggestions": ["Lion", "Elephant"]}
-"fruit" \u2192 {"message": "Here are fruit-related resources!", "searchQuery": "fruit", "searchType": "text_search", "classNum": null, "subject": null, "suggestions": ["Fruits", "Vegetables", "Animals"]}`;
+"monkey" \u2192 {"message": "Here are monkey resources!", "searchQuery": "monkey", "searchType": "direct_search", "classNum": null, "subject": null, "suggestions": []}
+"fruit" \u2192 {"message": "Here are fruit resources!", "searchQuery": "fruit", "searchType": "direct_search", "classNum": null, "subject": null, "suggestions": []}
+"animals" \u2192 {"message": "Showing animal resources!", "searchQuery": "animals", "searchType": "direct_search", "classNum": null, "subject": null, "suggestions": []}
+"class 5 maths" \u2192 {"message": "Opening Class 5 Maths!", "searchQuery": "class 5 maths", "searchType": "class_subject", "classNum": 5, "subject": "maths", "suggestions": []}
+"hi" \u2192 {"message": "Hello! What would you like to explore?", "searchQuery": null, "searchType": "greeting", "classNum": null, "subject": null, "suggestions": ["Animals", "Class 5 Maths", "Exam Tips"]}`;
 async function getAIResponse(userMessage, history = []) {
   try {
     const messages = [
@@ -853,14 +859,21 @@ async function getAIResponse(userMessage, history = []) {
     return {
       message: parsed.message || "How can I help?",
       searchQuery: parsed.searchQuery || null,
-      searchType: parsed.searchType || "greeting",
+      searchType: parsed.searchType || "direct_search",
       classNum: parsed.classNum || null,
       subject: parsed.subject || null,
-      suggestions: parsed.suggestions || ["Class 5 Maths", "Animals", "Exam Tips"]
+      suggestions: parsed.suggestions || []
     };
   } catch (e) {
     console.error("Groq error:", e);
-    return { message: "How can I help you today?", searchQuery: null, searchType: "greeting", classNum: null, subject: null, suggestions: ["Class 5 Maths", "Animals"] };
+    return {
+      message: "How can I help you today?",
+      searchQuery: null,
+      searchType: "greeting",
+      classNum: null,
+      subject: null,
+      suggestions: ["Animals", "Class 5 Maths", "Exam Tips"]
+    };
   }
 }
 
@@ -943,10 +956,33 @@ IMPORTANT: Translate single words directly. "\u0C2A\u0C02\u0C21\u0C41" means "fr
 
 // server/routers.ts
 var BASE_URL2 = "https://portal.myschoolct.com";
+var PORTAL_API = "https://portal.myschoolct.com/api/rest/search/global";
+async function fetchPortalResults(query, size = 6) {
+  try {
+    const response = await fetch(`${PORTAL_API}?query=${encodeURIComponent(query)}&size=${size}`);
+    if (!response.ok) {
+      console.error("Portal API error:", response.status);
+      return { results: [], total: 0, query };
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to fetch portal results:", error);
+    return { results: [], total: 0, query };
+  }
+}
 function buildSearchUrl(aiResponse) {
   if (aiResponse.searchType === "class_subject" && aiResponse.classNum) {
     if (aiResponse.subject) {
-      const subjectCodes = { maths: "mat", science: "sci", english: "eng", hindi: "hin", telugu: "tel", social: "soc", evs: "evs", computer: "com" };
+      const subjectCodes = {
+        maths: "mat",
+        science: "sci",
+        english: "eng",
+        hindi: "hin",
+        telugu: "tel",
+        social: "soc",
+        evs: "evs",
+        computer: "com"
+      };
       const code = subjectCodes[aiResponse.subject.toLowerCase()] || "";
       if (code) return `${BASE_URL2}/views/academic/class/class-${aiResponse.classNum}?main=1&mu=${code}`;
     }
@@ -978,7 +1014,16 @@ var appRouter = router({
         let resourceUrl = buildSearchUrl(aiResponse);
         let resourceName = "";
         let resourceDescription = "";
-        if (aiResponse.searchQuery && aiResponse.searchType !== "greeting" && aiResponse.searchType !== "clarification") {
+        let thumbnails = [];
+        if (aiResponse.searchType === "direct_search" && aiResponse.searchQuery) {
+          const portalResults = await fetchPortalResults(aiResponse.searchQuery, 6);
+          thumbnails = portalResults.results;
+          resourceUrl = `${BASE_URL2}/views/sections/result?text=${encodeURIComponent(aiResponse.searchQuery)}`;
+          if (thumbnails.length > 0) {
+            resourceName = `${thumbnails.length} resources found`;
+            resourceDescription = thumbnails.map((r) => r.title).slice(0, 3).join(", ");
+          }
+        } else if (aiResponse.searchQuery && aiResponse.searchType !== "greeting") {
           const searchResults = performPrioritySearch(aiResponse.searchQuery);
           if (searchResults.length > 0) {
             resourceUrl = searchResults[0].url;
@@ -993,7 +1038,7 @@ var appRouter = router({
             query: message,
             translatedQuery: translatedMessage !== message ? translatedMessage : null,
             language: language || "en",
-            resultsFound: resourceUrl ? 1 : 0,
+            resultsFound: thumbnails.length || (resourceUrl ? 1 : 0),
             topResultUrl: resourceUrl,
             topResultName: resourceName,
             sessionId
@@ -1005,7 +1050,13 @@ var appRouter = router({
           resourceName,
           resourceDescription,
           suggestions: aiResponse.suggestions,
-          searchType: aiResponse.searchType
+          searchType: aiResponse.searchType,
+          thumbnails: thumbnails.map((t2) => ({
+            url: t2.path,
+            thumbnail: t2.thumbnail,
+            title: t2.title,
+            category: t2.category
+          }))
         };
       } catch (error) {
         console.error("Chat error:", error);
@@ -1014,8 +1065,9 @@ var appRouter = router({
           resourceUrl: "",
           resourceName: "",
           resourceDescription: "",
-          suggestions: ["Class 5 Maths", "Animal Images", "Exam Tips"],
-          searchType: "greeting"
+          suggestions: ["Animals", "Class 5 Maths", "Exam Tips"],
+          searchType: "greeting",
+          thumbnails: []
         };
       }
     })
