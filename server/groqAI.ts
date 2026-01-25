@@ -17,19 +17,22 @@ Rules:
 3. For "class X subject" WITH CLASS NUMBER → class_subject with classNum and subject
 4. For subject name WITHOUT class number (e.g., "maths", "science", "english") → direct_search, NOT class_subject
 5. For gibberish/invalid input (e.g., ";iajsdfj", "asdfgh", random characters) → invalid type with searchQuery "academic"
-6. Default: direct_search
+6. For "interview", "interviews", "preparation" → search for "exam tips"
+7. Default: direct_search
 
 IMPORTANT: 
 - Only use class_subject if you can extract a CLASS NUMBER (1-10)
-- If input is clearly gibberish (random characters, no meaning), use "invalid" type and suggest academic resources
+- If input is clearly gibberish (random characters, no meaning), use "invalid" type
+- "interview" queries should search for "exam tips"
 
 Examples:
 "monkey" → {"message": "Here are monkey resources!", "searchQuery": "monkey", "searchType": "direct_search", "classNum": null, "subject": null, "suggestions": []}
+"interview" → {"message": "Here are exam tips to help you prepare!", "searchQuery": "exam tips", "searchType": "direct_search", "classNum": null, "subject": null, "suggestions": []}
+"interview preparation" → {"message": "Here are exam tips!", "searchQuery": "exam tips", "searchType": "direct_search", "classNum": null, "subject": null, "suggestions": []}
 "maths" → {"message": "Here are maths resources!", "searchQuery": "maths", "searchType": "direct_search", "classNum": null, "subject": null, "suggestions": []}
 "class 5 maths" → {"message": "Opening Class 5 Maths!", "searchQuery": "class 5 maths", "searchType": "class_subject", "classNum": 5, "subject": "maths", "suggestions": []}
 "hi" → {"message": "Hello! What would you like to explore?", "searchQuery": null, "searchType": "greeting", "classNum": null, "subject": null, "suggestions": ["Animals", "Class 5 Maths", "Exam Tips"]}
-";iajsdfj" → {"message": "Invalid input. Please find academic resources below!", "searchQuery": "academic", "searchType": "invalid", "classNum": null, "subject": null, "suggestions": ["Class 1", "Class 5", "Animals", "Shapes"]}
-"asdfghjkl" → {"message": "Invalid input. Please find academic resources below!", "searchQuery": "academic", "searchType": "invalid", "classNum": null, "subject": null, "suggestions": ["Animals", "Numbers", "Colors"]}`;
+";iajsdfj" → {"message": "Invalid input. Please find academic resources below!", "searchQuery": "academic", "searchType": "invalid", "classNum": null, "subject": null, "suggestions": ["Class 1", "Class 5", "Animals", "Shapes"]}`;
 
 export interface AIResponse {
   message: string;
