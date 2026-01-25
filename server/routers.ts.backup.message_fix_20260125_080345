@@ -213,14 +213,8 @@ export const appRouter = router({
 
           console.log(`✅ === PORTAL PRIORITY SEARCH COMPLETE ===\n`);
 
-          // Override AI message with portal results for better UX
-          let finalMessage = aiResponse.message;
-          if (thumbnails.length > 0) {
-            finalMessage = `Found ${thumbnails.length} results for "${aiResponse.searchQuery}"`;
-          }
-
           return {
-            response: finalMessage,
+            response: aiResponse.message,
             resourceUrl,
             resourceName,
             resourceDescription,

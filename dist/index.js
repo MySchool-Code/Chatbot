@@ -1163,8 +1163,12 @@ var appRouter = router({
         }
         console.log(`\u2705 === PORTAL PRIORITY SEARCH COMPLETE ===
 `);
+        let finalMessage = aiResponse.message;
+        if (thumbnails.length > 0) {
+          finalMessage = `Found ${thumbnails.length} results for "${aiResponse.searchQuery}"`;
+        }
         return {
-          response: aiResponse.message,
+          response: finalMessage,
           resourceUrl,
           resourceName,
           resourceDescription,
