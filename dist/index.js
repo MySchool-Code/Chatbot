@@ -652,6 +652,9 @@ var COMMON_WORDS = {
   "fruist": "fruits",
   "frutis": "fruits",
   "fruite": "fruits",
+  "fruit": "fruit",
+  "fruits": "fruits",
+  "fruites": "fruits",
   // Smart variations
   "smrat": "smart",
   "samrt": "smart",
@@ -830,7 +833,8 @@ Examples:
 "hi" \u2192 {"message": "Hello! What would you like to explore?", "searchQuery": null, "searchType": "greeting", "classNum": null, "subject": null, "suggestions": ["Class 5 Maths", "Animal Images", "Exam Tips"]}
 "maths" \u2192 {"message": "Which class Maths?", "searchQuery": null, "searchType": "clarification", "classNum": null, "subject": "maths", "suggestions": ["Class 3 Maths", "Class 5 Maths", "Class 7 Maths"]}
 "class 5 maths" \u2192 {"message": "Here are Class 5 Maths resources!", "searchQuery": "class 5 maths", "searchType": "class_subject", "classNum": 5, "subject": "maths", "suggestions": ["Class 5 Science", "Class 6 Maths"]}
-"animals" \u2192 {"message": "Searching animal images!", "searchQuery": "animals", "searchType": "text_search", "classNum": null, "subject": null, "suggestions": ["Lion", "Elephant"]}`;
+"animals" \u2192 {"message": "Searching animal images!", "searchQuery": "animals", "searchType": "text_search", "classNum": null, "subject": null, "suggestions": ["Lion", "Elephant"]}
+"fruit" \u2192 {"message": "Here are fruit-related resources!", "searchQuery": "fruit", "searchType": "text_search", "classNum": null, "subject": null, "suggestions": ["Fruits", "Vegetables", "Animals"]}`;
 async function getAIResponse(userMessage, history = []) {
   try {
     const messages = [
@@ -908,8 +912,11 @@ Return JSON format: {"translatedText": "...", "keyword": "..."}
 
 Examples:
 Telugu "\u0C1C\u0C02\u0C24\u0C41\u0C35\u0C41\u0C32 \u0C1A\u0C3F\u0C24\u0C4D\u0C30\u0C3E\u0C32\u0C41" \u2192 {"translatedText": "animal images", "keyword": "animals"}
+Telugu "\u0C2A\u0C02\u0C21\u0C41" \u2192 {"translatedText": "fruit", "keyword": "fruit"}
 Hindi "\u0915\u0915\u094D\u0937\u093E 5 \u0917\u0923\u093F\u0924" \u2192 {"translatedText": "class 5 maths", "keyword": "maths"}
-Gujarati "\u0AB5\u0ABF\u0A9C\u0ACD\u0A9E\u0ABE\u0AA8 \u0AAA\u0AB0\u0AC0\u0A95\u0ACD\u0AB7\u0ABE" \u2192 {"translatedText": "science exam", "keyword": "science"}`
+Gujarati "\u0AB5\u0ABF\u0A9C\u0ACD\u0A9E\u0ABE\u0AA8 \u0AAA\u0AB0\u0AC0\u0A95\u0ACD\u0AB7\u0ABE" \u2192 {"translatedText": "science exam", "keyword": "science"}
+
+IMPORTANT: Translate single words directly. "\u0C2A\u0C02\u0C21\u0C41" means "fruit" in English.`
         },
         {
           role: "user",
