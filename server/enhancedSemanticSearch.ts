@@ -73,6 +73,7 @@ const COMMON_WORDS: Record<string, string> = {
   'sylabus': 'syllabus', 'sillabus': 'syllabus', 'syllbus': 'syllabus', 'syllabu': 'syllabus',
   // Fruit variations
   'fruts': 'fruits', 'fruist': 'fruits', 'frutis': 'fruits', 'fruite': 'fruits',
+  'fruit': 'fruit', 'fruits': 'fruits', 'fruites': 'fruits',
   // Smart variations
   'smrat': 'smart', 'samrt': 'smart', 'smrt': 'smart',
   // Wall variations

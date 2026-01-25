@@ -30,8 +30,11 @@ Return JSON format: {"translatedText": "...", "keyword": "..."}
 
 Examples:
 Telugu "జంతువుల చిత్రాలు" → {"translatedText": "animal images", "keyword": "animals"}
+Telugu "పండు" → {"translatedText": "fruit", "keyword": "fruit"}
 Hindi "कक्षा 5 गणित" → {"translatedText": "class 5 maths", "keyword": "maths"}
-Gujarati "વિજ્ઞાન પરીક્ષા" → {"translatedText": "science exam", "keyword": "science"}`
+Gujarati "વિજ્ઞાન પરીક્ષા" → {"translatedText": "science exam", "keyword": "science"}
+
+IMPORTANT: Translate single words directly. "పండు" means "fruit" in English.`
         },
         {
           role: 'user',
