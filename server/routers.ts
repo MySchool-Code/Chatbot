@@ -79,6 +79,10 @@ async function findNearestResults(originalQuery: string): Promise<PortalSearchRe
 }
 
 function buildSearchUrl(aiResponse: any): string {
+  // For invalid/gibberish input, route to academic page
+  if (aiResponse.searchType === "invalid") {
+    return `${BASE_URL}/views/academic`;
+  }
   // For class-based queries, use simple class URL without parameters
   if (aiResponse.searchType === "class_subject" && aiResponse.classNum) {
     return `${BASE_URL}/views/academic/class/class-${aiResponse.classNum}`;
