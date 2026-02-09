@@ -550,6 +550,32 @@ var COMMON_WORDS = {
   "anmals": "animals",
   "animales": "animals",
   "animlas": "animals",
+  // Common animals (prevent false corrections)
+  "monkey": "monkey",
+  "monkeys": "monkey",
+  "monky": "monkey",
+  "munkey": "monkey",
+  "lion": "lion",
+  "lions": "lion",
+  "tiger": "tiger",
+  "tigers": "tiger",
+  "elephant": "elephant",
+  "elephants": "elephant",
+  "elefant": "elephant",
+  "dog": "dog",
+  "dogs": "dog",
+  "cat": "cat",
+  "cats": "cat",
+  "bird": "bird",
+  "birds": "bird",
+  "fish": "fish",
+  "fishes": "fish",
+  "rabbit": "rabbit",
+  "rabbits": "rabbit",
+  "rabit": "rabbit",
+  "flower": "flower",
+  "flowers": "flowers",
+  "flowr": "flower",
   // Math variations
   "maths": "maths",
   "mathss": "maths",
@@ -1120,13 +1146,17 @@ var appRouter = router({
         let resourceName = "";
         let resourceDescription = "";
         let thumbnails = [];
-        if (aiResponse.searchQuery) {
+        let effectiveSearchQuery = aiResponse.searchQuery;
+        if (aiResponse.searchType === "class_subject" && aiResponse.classNum) {
+          effectiveSearchQuery = `class ${aiResponse.classNum} ${aiResponse.subject || ""}`.trim();
+        }
+        if (effectiveSearchQuery) {
           console.log(`
-\u{1F50D} [PORTAL PRIORITY] Searching for: "${aiResponse.searchQuery}"`);
-          let portalResults = await fetchPortalResults(aiResponse.searchQuery, 6);
+\u{1F50D} [PORTAL PRIORITY] Searching for: "${effectiveSearchQuery}"`);
+          let portalResults = await fetchPortalResults(effectiveSearchQuery, 6);
           if (portalResults.length === 0) {
-            console.log(`\u26A0\uFE0F Zero portal results for "${aiResponse.searchQuery}", trying fallback...`);
-            const fallback = await findNearestResults(aiResponse.searchQuery);
+            console.log(`\u26A0\uFE0F Zero portal results for "${effectiveSearchQuery}", trying fallback...`);
+            const fallback = await findNearestResults(effectiveSearchQuery);
             portalResults = fallback.results;
             if (portalResults.length > 0) {
               resourceUrl = `${BASE_URL}/views/result?text=${encodeURIComponent(fallback.query)}`;
@@ -1148,6 +1178,10 @@ var appRouter = router({
             resourceUrl = `${BASE_URL}/views/academic`;
           }
         }
+        let finalMessage = aiResponse.message;
+        if (thumbnails.length > 0 && aiResponse.searchType !== "class_subject") {
+          finalMessage = `Found ${thumbnails.length} results for "${effectiveSearchQuery}"`;
+        }
         await saveChatMessage({
           sessionId,
           role: "user",
@@ -1160,10 +1194,10 @@ var appRouter = router({
           message: finalMessage,
           language: "en"
         });
-        if (aiResponse.searchQuery) {
+        if (effectiveSearchQuery) {
           await logSearchQuery({
             sessionId,
-            query: aiResponse.searchQuery,
+            query: effectiveSearchQuery,
             translatedQuery: translatedText !== message ? translatedText : null,
             language: language || "en",
             resultsCount: thumbnails.length,
@@ -1173,10 +1207,6 @@ var appRouter = router({
         }
         console.log(`\u2705 === PORTAL PRIORITY SEARCH COMPLETE ===
 `);
-        let finalMessage = aiResponse.message;
-        if (thumbnails.length > 0) {
-          finalMessage = `Found ${thumbnails.length} results for "${aiResponse.searchQuery}"`;
-        }
         return {
           response: finalMessage,
           resourceUrl,

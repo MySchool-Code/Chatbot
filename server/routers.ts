@@ -149,19 +149,27 @@ export const appRouter = router({
           let resourceName = "";
           let resourceDescription = "";
           let thumbnails: any[] = [];
+          
+          // Determine the search query to use
+          let effectiveSearchQuery = aiResponse.searchQuery;
+          
+          // For class_subject, construct a search query from class and subject
+          if (aiResponse.searchType === "class_subject" && aiResponse.classNum) {
+            effectiveSearchQuery = `class ${aiResponse.classNum} ${aiResponse.subject || ''}`.trim();
+          }
 
           // ===== CRITICAL: PORTAL BACKEND SEARCH IS ALWAYS PRIORITY =====
-          // For ANY searchQuery, fetch from portal first with advanced search
-          if (aiResponse.searchQuery) {
-            console.log(`\n🔍 [PORTAL PRIORITY] Searching for: "${aiResponse.searchQuery}"`);
+          // For ANY search (direct or class_subject), fetch from portal
+          if (effectiveSearchQuery) {
+            console.log(`\n🔍 [PORTAL PRIORITY] Searching for: "${effectiveSearchQuery}"`);
             
             // ALWAYS fetch portal results with advanced search (fuzzy + soundex + synonyms)
-            let portalResults = await fetchPortalResults(aiResponse.searchQuery, 6);
+            let portalResults = await fetchPortalResults(effectiveSearchQuery, 6);
             
             // If no results, try fallback
             if (portalResults.length === 0) {
-              console.log(`⚠️ Zero portal results for "${aiResponse.searchQuery}", trying fallback...`);
-              const fallback = await findNearestResults(aiResponse.searchQuery);
+              console.log(`⚠️ Zero portal results for "${effectiveSearchQuery}", trying fallback...`);
+              const fallback = await findNearestResults(effectiveSearchQuery);
               portalResults = fallback.results;
               
               if (portalResults.length > 0) {
@@ -194,6 +202,12 @@ export const appRouter = router({
             }
           }
 
+          // FIXED: Declare finalMessage BEFORE using it
+          let finalMessage = aiResponse.message;
+          if (thumbnails.length > 0 && aiResponse.searchType !== "class_subject") {
+            finalMessage = `Found ${thumbnails.length} results for "${effectiveSearchQuery}"`;
+          }
+
           // Save chat messages
           await saveChatMessage({
             sessionId,
@@ -209,10 +223,10 @@ export const appRouter = router({
           });
 
           // Log search
-          if (aiResponse.searchQuery) {
+          if (effectiveSearchQuery) {
             await logSearchQuery({
               sessionId,
-              query: aiResponse.searchQuery,
+              query: effectiveSearchQuery,
               translatedQuery: translatedText !== message ? translatedText : null,
               language: language || "en",
               resultsCount: thumbnails.length,
@@ -222,12 +236,6 @@ export const appRouter = router({
           }
 
           console.log(`✅ === PORTAL PRIORITY SEARCH COMPLETE ===\n`);
-
-          // Override AI message with portal results for better UX
-          let finalMessage = aiResponse.message;
-          if (thumbnails.length > 0) {
-            finalMessage = `Found ${thumbnails.length} results for "${aiResponse.searchQuery}"`;
-          }
 
           return {
             response: finalMessage,
