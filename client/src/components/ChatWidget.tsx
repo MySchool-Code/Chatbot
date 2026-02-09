@@ -15,6 +15,7 @@ interface Message {
   resourceUrl?: string;
   resourceName?: string;
   resourceDescription?: string;
+  thumbnails?: Array<{url: string; thumbnail: string; title: string; category: string}>;
 }
 
 interface ChatWidgetProps {
@@ -165,6 +166,7 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
         resourceUrl: response.resourceUrl,
         resourceName: response.resourceName,
         resourceDescription: response.resourceDescription,
+        thumbnails: response.thumbnails,
         timestamp: new Date().toISOString(),
       };
 
@@ -292,6 +294,43 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
                       </div>
                     )}
                     <SimpleText content={msg.content} />
+                    
+                    {/* Display thumbnail gallery for search results */}
+                    {msg.thumbnails && msg.thumbnails.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        <div className="text-xs font-semibold text-gray-500 mb-2">Search Results</div>
+                        <div className="grid grid-cols-3 gap-2">
+                          {msg.thumbnails.slice(0, 6).map((thumb, thumbIdx) => (
+                            <a
+                              key={thumbIdx}
+                              href={msg.resourceUrl || '#'}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="group cursor-pointer"
+                            >
+                              <div className="aspect-square rounded-lg bg-gray-100 overflow-hidden border-2 border-transparent group-hover:border-pink-400 transition-all shadow-sm">
+                                {!imageErrors[`${msg.id}_${thumbIdx}`] ? (
+                                  <img
+                                    src={thumb.thumbnail || thumb.url}
+                                    alt={thumb.title}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                    onError={() => setImageErrors(prev => ({...prev, [`${msg.id}_${thumbIdx}`]: true}))}
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                                    <ImageIcon className="h-4 w-4 text-gray-400" />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="text-[9px] text-gray-500 mt-1 truncate text-center group-hover:text-pink-600 transition-colors">
+                                {thumb.title}
+                              </div>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
                     {msg.resourceUrl && (
                       <a
                         href={msg.resourceUrl}
