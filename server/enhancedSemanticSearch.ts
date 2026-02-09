@@ -56,6 +56,15 @@ const COMMON_WORDS: Record<string, string> = {
   'chrat': 'chart', 'chrts': 'charts', 'chrats': 'charts', 'cahrt': 'chart',
   // Animal variations
   'animls': 'animals', 'anmals': 'animals', 'animales': 'animals', 'animlas': 'animals',
+  // Common animals (prevent false corrections)
+  'monkey': 'monkey', 'monkeys': 'monkey', 'monky': 'monkey', 'munkey': 'monkey',
+  'lion': 'lion', 'lions': 'lion', 'tiger': 'tiger', 'tigers': 'tiger',
+  'elephant': 'elephant', 'elephants': 'elephant', 'elefant': 'elephant',
+  'dog': 'dog', 'dogs': 'dog', 'cat': 'cat', 'cats': 'cat',
+  'bird': 'bird', 'birds': 'bird', 'fish': 'fish', 'fishes': 'fish',
+  'rabbit': 'rabbit', 'rabbits': 'rabbit', 'cow': 'cow', 'horse': 'horse',
+  'bear': 'bear', 'snake': 'snake', 'frog': 'frog', 'deer': 'deer',
+  'flower': 'flower', 'flowers': 'flowers', 'tree': 'tree', 'trees': 'trees',
   // Math variations
   'maths': 'maths', 'mathss': 'maths', 'mats': 'maths', 'mahs': 'maths',
   // Science variations
