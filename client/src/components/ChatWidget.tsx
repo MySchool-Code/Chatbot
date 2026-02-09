@@ -295,18 +295,18 @@ export function ChatWidget({ autoOpen = false, isEmbedded = false }: ChatWidgetP
                     )}
                     <SimpleText content={msg.content} />
                     
-                    {/* Display thumbnail gallery for search results */}
+                    {/* Thumbnail gallery - each thumbnail links to its specific search */}
                     {msg.thumbnails && msg.thumbnails.length > 0 && (
                       <div className="mt-3 pt-3 border-t border-gray-100">
-                        <div className="text-xs font-semibold text-gray-500 mb-2">Search Results</div>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="text-xs font-semibold text-gray-500 mb-2">Found Images</div>
+                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                           {msg.thumbnails.slice(0, 6).map((thumb, thumbIdx) => (
                             <a
                               key={thumbIdx}
-                              href={msg.resourceUrl || '#'}
+                              href={`https://portal.myschoolct.com/views/result?text=${encodeURIComponent(thumb.title)}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="group cursor-pointer"
+                              className="flex-shrink-0 w-16 group cursor-pointer"
                             >
                               <div className="aspect-square rounded-lg bg-gray-100 overflow-hidden border-2 border-transparent group-hover:border-pink-400 transition-all shadow-sm">
                                 {!imageErrors[`${msg.id}_${thumbIdx}`] ? (
