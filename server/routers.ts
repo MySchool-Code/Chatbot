@@ -27,56 +27,51 @@ const OCRC_CATEGORIES: Record<string, { path: string; mu: number }> = {
   'insects': { path: '/views/academic/imagebank/insects', mu: 6 },
   'insect': { path: '/views/academic/imagebank/insects', mu: 6 },
   'professions': { path: '/views/academic/imagebank/professions', mu: 7 },
-  'profession': { path: '/views/academic/imagebank/professions', mu: 7 },
-  'great personalities': { path: '/views/academic/imagebank/great-personalities', mu: 8 },
-  'personalities': { path: '/views/academic/imagebank/great-personalities', mu: 8 },
   'comics': { path: '/views/sections/comics', mu: 8 },
-  'comic': { path: '/views/sections/comics', mu: 8 },
   'rhymes': { path: '/views/sections/rhymes', mu: 1 },
-  'rhyme': { path: '/views/sections/rhymes', mu: 1 },
   'stories': { path: '/views/sections/pictorial-stories', mu: 2 },
   'festivals': { path: '/views/sections/imagebank/festivals', mu: 0 },
   'vehicles': { path: '/views/sections/imagebank/vehicles', mu: 0 },
-  'opposites': { path: '/views/sections/imagebank/opposites', mu: 0 },
-  'habits': { path: '/views/sections/imagebank/habits', mu: 0 },
-  'safety': { path: '/views/sections/safety', mu: 0 },
   'puzzles': { path: '/views/sections/puzzles-riddles', mu: 0 },
-  'riddles': { path: '/views/sections/puzzles-riddles', mu: 0 },
 };
 
-// Animal keywords that should go to Animals OCRC
-const ANIMAL_KEYWORDS = [
-  'monkey', 'dog', 'cat', 'elephant', 'lion', 'tiger', 'cow', 'horse', 'rabbit', 'bear',
-  'deer', 'giraffe', 'zebra', 'snake', 'frog', 'camel', 'goat', 'sheep', 'pig', 'fox',
-  'wolf', 'cheetah', 'leopard', 'panda', 'koala', 'kangaroo', 'crocodile', 'turtle'
-];
-
-// Bird keywords
+// Animal keywords
+const ANIMAL_KEYWORDS = ['monkey', 'dog', 'cat', 'elephant', 'lion', 'tiger', 'cow', 'horse', 'rabbit', 'bear', 'deer', 'giraffe', 'zebra', 'snake', 'frog', 'camel', 'goat', 'sheep', 'pig', 'fox', 'wolf', 'cheetah', 'leopard', 'panda', 'koala', 'kangaroo', 'crocodile', 'turtle'];
 const BIRD_KEYWORDS = ['parrot', 'peacock', 'sparrow', 'crow', 'eagle', 'owl', 'pigeon', 'duck', 'hen', 'penguin'];
-
-// Insect keywords
-const INSECT_KEYWORDS = ['butterfly', 'bee', 'ant', 'spider', 'grasshopper', 'dragonfly', 'ladybug', 'mosquito'];
-
-// Fish/Sea animal keywords
+const INSECT_KEYWORDS = ['butterfly', 'bee', 'ant', 'spider', 'grasshopper', 'dragonfly', 'ladybug'];
 const FISH_KEYWORDS = ['fish', 'fishes', 'shark', 'whale', 'dolphin', 'octopus', 'jellyfish', 'crab'];
 
+// Subject mu values - VERIFIED: maths = mu=4
+const SUBJECT_MU: Record<string, number> = {
+  'english': 0, 'eng': 0,
+  'hindi': 1,
+  'telugu': 2,
+  'evs': 3, 'science': 3, 'sci': 3,
+  'maths': 4, 'math': 4, 'mathematics': 4,
+  'gk': 5, 'general knowledge': 5,
+  'computer': 6, 'computers': 6, 'it': 6,
+  'art': 7, 'drawing': 7,
+  'craft': 8, 'crafts': 8,
+  'stories': 9, 'story': 9,
+  'charts': 10, 'chart': 10,
+};
+
+// Age to class mapping: Age 6 = Class 1, Age 8 = Class 3
+const AGE_TO_CLASS: Record<number, string> = {
+  3: 'nursery', 4: 'lkg', 5: 'ukg',
+  6: 'class-1', 7: 'class-2', 8: 'class-3', 9: 'class-4', 10: 'class-5',
+  11: 'class-6', 12: 'class-7', 13: 'class-8', 14: 'class-9', 15: 'class-10',
+};
+
 interface PortalResult {
-  path: string;
-  title: string;
-  category: string;
-  thumbnail: string;
-  type: string;
-  tags: string[];
+  path: string; title: string; category: string; thumbnail: string; type: string; tags: string[];
 }
 
-/**
- * CRITICAL: Portal Backend Search is ALWAYS PRIORITY
- */
 async function fetchPortalResults(query: string, size: number = 6): Promise<PortalResult[]> {
   try {
-    console.log(`🔍 [PORTAL PRIORITY] Fetching results: "${query}"`);
+    console.log(`🔍 [PORTAL] Fetching: "${query}"`);
     const results = await advancedSearch(query, PORTAL_API);
-    console.log(`✅ [PORTAL] Returned ${results.length} results`);
+    console.log(`✅ [PORTAL] Found ${results.length} results`);
     return results || [];
   } catch (error) {
     console.error('❌ [PORTAL] Error:', error);
@@ -85,102 +80,105 @@ async function fetchPortalResults(query: string, size: number = 6): Promise<Port
 }
 
 const FALLBACK_SEARCHES: Record<string, string[]> = {
-  default: ["animals", "flowers", "shapes", "numbers", "colors"],
-  science: ["animals", "plants", "nature"],
-  maths: ["numbers", "shapes", "geometry"],
+  default: ["animals", "flowers", "shapes", "numbers"],
 };
 
 async function findNearestResults(originalQuery: string): Promise<{ query: string; results: PortalResult[] }> {
-  const category = Object.keys(FALLBACK_SEARCHES).find(cat => 
-    originalQuery.toLowerCase().includes(cat)
-  ) || "default";
-  
-  for (const fallback of FALLBACK_SEARCHES[category]) {
+  for (const fallback of FALLBACK_SEARCHES.default) {
     const results = await fetchPortalResults(fallback, 6);
     if (results.length > 0) return { query: fallback, results };
   }
   return { query: "educational resources", results: [] };
 }
 
-// Subject name mappings for clean URLs
-const SUBJECT_NAMES: Record<string, string> = {
-  'english': 'english', 'eng': 'english',
-  'maths': 'maths', 'math': 'maths', 'mathematics': 'maths',
-  'science': 'science', 'sci': 'science', 'evs': 'evs',
-  'social': 'social', 'gk': 'gk', 'computer': 'computer',
-  'telugu': 'telugu', 'hindi': 'hindi', 'art': 'art', 'craft': 'craft',
-};
-
 // Greeting patterns
-const GREETING_PATTERNS = [
-  /^(hi|hello|hey|hii+|helo|hai|hola)\b/i,
-  /^good\s*(morning|afternoon|evening|night)/i,
-  /^(what'?s?\s*up|sup|yo|howdy|greetings|namaste)/i,
-  /^(how\s*are\s*you|how\s*r\s*u)/i,
-];
+const GREETING_PATTERNS = [/^(hi|hello|hey|hii+|helo|hai|hola)\b/i, /^good\s*(morning|afternoon|evening)/i, /^(what'?s?\s*up|howdy|greetings|namaste)/i];
 
 function isGreeting(message: string): boolean {
   return GREETING_PATTERNS.some(p => p.test(message.trim().toLowerCase()));
 }
 
-function parseClassSubject(query: string): { classNum: number | null; subject: string | null } {
+// Find subject mu from query
+function findSubjectMu(query: string): number | null {
+  const lowerQuery = query.toLowerCase();
+  for (const [subj, mu] of Object.entries(SUBJECT_MU)) {
+    if (lowerQuery.includes(subj)) return mu;
+  }
+  return null;
+}
+
+// Parse class and subject from query
+function parseClassSubject(query: string): { classNum: number | null; subjectMu: number | null } {
   const classMatch = query.toLowerCase().match(/(?:class|grade|standard)\s*(\d+)/i);
-  const subjectMatch = query.toLowerCase().match(/(?:maths|math|english|science|hindi|evs|art|craft|gk|computer|telugu)/i);
+  const subjectMu = findSubjectMu(query);
   return {
     classNum: classMatch ? parseInt(classMatch[1]) : null,
-    subject: subjectMatch ? SUBJECT_NAMES[subjectMatch[0].toLowerCase()] || subjectMatch[0].toLowerCase() : null
+    subjectMu
   };
 }
 
+// Parse age from query
+function parseAge(query: string): number | null {
+  const ageMatch = query.toLowerCase().match(/(?:age|year|years?\s*old)\s*(\d+)/i) || query.match(/(\d+)\s*(?:year|years?\s*old)/i);
+  return ageMatch ? parseInt(ageMatch[1]) : null;
+}
+
 /**
- * Build URL with OCRC PRIORITY
- * 1. Check OCRC categories first
- * 2. Then class/subject navigation
- * 3. Then text search
+ * Build URL with correct format:
+ * - OCRC: /views/academic/imagebank/animals?main=2&mu=0
+ * - Class: /views/academic/class/class-1
+ * - Class+Subject: /views/academic/class/class-1?main=0&mu=4
  */
-function buildSmartUrl(query: string, classNum: number | null, subject: string | null): string {
+function buildSmartUrl(query: string, classNum: number | null, subjectMu: number | null): string {
   const lowerQuery = query.toLowerCase().trim();
   
-  // PRIORITY 1: Check OCRC categories
+  // PRIORITY 1: OCRC categories
   if (OCRC_CATEGORIES[lowerQuery]) {
     return `${BASE_URL}${OCRC_CATEGORIES[lowerQuery].path}?main=2&mu=${OCRC_CATEGORIES[lowerQuery].mu}`;
   }
-  
-  // Check if query contains OCRC category
   for (const [cat, config] of Object.entries(OCRC_CATEGORIES)) {
     if (lowerQuery.includes(cat) || cat.includes(lowerQuery)) {
       return `${BASE_URL}${config.path}?main=2&mu=${config.mu}`;
     }
   }
   
-  // Check animal keywords → Animals OCRC
-  if (ANIMAL_KEYWORDS.some(a => lowerQuery.includes(a))) {
-    return `${BASE_URL}/views/academic/imagebank/animals?main=2&mu=0`;
+  // Animal/Bird/Insect/Fish keywords → OCRC
+  if (ANIMAL_KEYWORDS.some(a => lowerQuery.includes(a))) return `${BASE_URL}/views/academic/imagebank/animals?main=2&mu=0`;
+  if (BIRD_KEYWORDS.some(b => lowerQuery.includes(b))) return `${BASE_URL}/views/academic/imagebank/birds?main=2&mu=1`;
+  if (INSECT_KEYWORDS.some(i => lowerQuery.includes(i))) return `${BASE_URL}/views/academic/imagebank/insects?main=2&mu=6`;
+  if (FISH_KEYWORDS.some(f => lowerQuery.includes(f))) return `${BASE_URL}/views/academic/imagebank/animals/sea-animals?main=2&mu=0`;
+  
+  // PRIORITY 2: Age-based navigation (Age 6 = Class 1, Age 8 = Class 3)
+  const age = parseAge(lowerQuery);
+  if (age && AGE_TO_CLASS[age]) {
+    const className = AGE_TO_CLASS[age];
+    if (subjectMu !== null) {
+      return `${BASE_URL}/views/academic/class/${className}?main=0&mu=${subjectMu}`;
+    }
+    return `${BASE_URL}/views/academic/class/${className}`;
   }
   
-  // Check bird keywords → Birds OCRC
-  if (BIRD_KEYWORDS.some(b => lowerQuery.includes(b))) {
-    return `${BASE_URL}/views/academic/imagebank/birds?main=2&mu=1`;
+  // PRIORITY 3: Class + Subject navigation
+  if (classNum && classNum >= 1 && classNum <= 10) {
+    const className = `class-${classNum}`;
+    if (subjectMu !== null) {
+      // URL format: /views/academic/class/class-1?main=0&mu=4
+      return `${BASE_URL}/views/academic/class/${className}?main=0&mu=${subjectMu}`;
+    }
+    return `${BASE_URL}/views/academic/class/${className}`;
   }
   
-  // Check insect keywords → Insects OCRC
-  if (INSECT_KEYWORDS.some(i => lowerQuery.includes(i))) {
-    return `${BASE_URL}/views/academic/imagebank/insects?main=2&mu=6`;
+  // Kindergarten
+  const kinderMatch = lowerQuery.match(/\b(nursery|lkg|ukg)\b/i);
+  if (kinderMatch) {
+    const kinderClass = kinderMatch[1].toLowerCase();
+    if (subjectMu !== null) {
+      return `${BASE_URL}/views/academic/class/${kinderClass}?main=0&mu=${subjectMu}`;
+    }
+    return `${BASE_URL}/views/academic/class/${kinderClass}`;
   }
   
-  // Check fish keywords → Sea Animals
-  if (FISH_KEYWORDS.some(f => lowerQuery.includes(f))) {
-    return `${BASE_URL}/views/academic/imagebank/animals/sea-animals?main=2&mu=0`;
-  }
-  
-  // PRIORITY 2: Class + Subject navigation
-  if (classNum && subject) {
-    return `${BASE_URL}/views/academic/class/class-${classNum}/${subject}`;
-  } else if (classNum) {
-    return `${BASE_URL}/views/academic/class/class-${classNum}`;
-  }
-  
-  // PRIORITY 3: Text search fallback
+  // PRIORITY 4: Text search fallback
   return `${BASE_URL}/views/result?text=${encodeURIComponent(query)}`;
 }
 
@@ -190,25 +188,16 @@ export const appRouter = router({
       .input(z.object({ query: z.string(), language: z.string().optional() }))
       .query(async ({ input }) => {
         if (input.query.length < 2) return { resources: [], images: [] };
-        
         try {
           const portalResults = await fetchPortalResults(input.query, 6);
           const images = portalResults.map((r: any) => ({
-            id: r.code || r.title,
-            url: r.thumbnail || r.path,
-            title: r.title,
-            category: r.category,
+            id: r.code || r.title, url: r.thumbnail || r.path, title: r.title, category: r.category,
           }));
-          
-          // Build URL using OCRC priority
-          const url = buildSmartUrl(input.query, null, null);
-          
+          const { classNum, subjectMu } = parseClassSubject(input.query);
+          const url = buildSmartUrl(input.query, classNum, subjectMu);
           const resources = portalResults.length > 0 ? [{
-            name: `Browse: "${input.query}"`,
-            description: `Found ${portalResults.length} results`,
-            url: url,
+            name: `Browse: "${input.query}"`, description: `Found ${portalResults.length} results`, url: url,
           }] : [];
-          
           return { resources, images };
         } catch (error) {
           console.error("Autocomplete error:", error);
@@ -217,63 +206,39 @@ export const appRouter = router({
       }),
 
     chat: publicProcedure
-      .input(
-        z.object({
-          message: z.string(),
-          sessionId: z.string(),
-          language: z.string().optional(),
-          history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string() })).optional(),
-        })
-      )
+      .input(z.object({
+        message: z.string(), sessionId: z.string(), language: z.string().optional(),
+        history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string() })).optional(),
+      }))
       .mutation(async ({ input }) => {
         const { message, sessionId, language = "en", history = [] } = input;
+        console.log(`\n🎯 === SEARCH START: "${message}" ===`);
 
-        console.log(`\n🎯 === OCRC-PRIORITY SEARCH START ===`);
-        console.log(`📝 Message: "${message}"`);
-
-        // Check if greeting
+        // Greeting check
         if (isGreeting(message)) {
           console.log(`👋 Greeting detected`);
           let aiMessage = "Hello! I'm your MySchool Assistant. How can I help you find educational resources today?";
-          try {
-            const aiResponse = await getAIResponse(message, history);
-            if (aiResponse.message) aiMessage = aiResponse.message;
-          } catch (e) { /* AI unavailable */ }
-          
+          try { const r = await getAIResponse(message, history); if (r.message) aiMessage = r.message; } catch (e) {}
           await saveChatMessage({ sessionId, role: "user", message, language });
           await saveChatMessage({ sessionId, role: "assistant", message: aiMessage, language: "en" });
-          
-          return {
-            response: aiMessage,
-            resourceUrl: "",
-            resourceName: "",
-            resourceDescription: "",
-            suggestions: ["Search for animals", "Class 5 Maths", "Browse flowers"],
-            searchType: "greeting",
-            thumbnails: [],
-          };
+          return { response: aiMessage, resourceUrl: "", resourceName: "", resourceDescription: "",
+            suggestions: ["Search animals", "Class 5 Maths", "Age 8 resources"], searchType: "greeting", thumbnails: [] };
         }
 
         // Translation if needed
         let searchQuery = message;
         if (language && language !== "en") {
-          try {
-            const result = await translateAndExtractKeyword(message, language);
-            searchQuery = result.translated || message;
-          } catch (e) { /* use original */ }
+          try { const r = await translateAndExtractKeyword(message, language); searchQuery = r.translated || message; } catch (e) {}
         }
 
         // Spell correction
-        try {
-          const corrected = await correctSpelling(searchQuery);
-          if (corrected) searchQuery = corrected;
-        } catch (e) { /* use original */ }
+        try { const c = await correctSpelling(searchQuery); if (c) searchQuery = c; } catch (e) {}
 
         // Parse class/subject
-        const { classNum, subject } = parseClassSubject(searchQuery);
+        const { classNum, subjectMu } = parseClassSubject(searchQuery);
         
-        // Build OCRC-priority URL
-        const resourceUrl = buildSmartUrl(searchQuery, classNum, subject);
+        // Build URL with correct format
+        const resourceUrl = buildSmartUrl(searchQuery, classNum, subjectMu);
         console.log(`🔗 Smart URL: ${resourceUrl}`);
 
         // Fetch portal results
@@ -283,42 +248,16 @@ export const appRouter = router({
           portalResults = fallback.results;
         }
 
-        const thumbnails = portalResults.map(r => ({
-          url: r.path,
-          thumbnail: r.thumbnail,
-          title: r.title,
-          category: r.category,
-        }));
+        const thumbnails = portalResults.map(r => ({ url: r.path, thumbnail: r.thumbnail, title: r.title, category: r.category }));
+        let responseMessage = portalResults.length > 0 ? `Found ${portalResults.length} results for "${searchQuery}"` : `No results for "${searchQuery}". Try browsing our resources!`;
 
-        let responseMessage = portalResults.length > 0
-          ? `Found ${portalResults.length} results for "${searchQuery}"`
-          : `No results for "${searchQuery}". Try browsing our resources!`;
-
-        // Save messages
         await saveChatMessage({ sessionId, role: "user", message, language });
         await saveChatMessage({ sessionId, role: "assistant", message: responseMessage, language: "en" });
+        await logSearchQuery({ sessionId, query: searchQuery, translatedQuery: searchQuery !== message ? searchQuery : null, language, resultsCount: thumbnails.length, topResultUrl: resourceUrl, topResultName: portalResults[0]?.title || "" });
 
-        await logSearchQuery({
-          sessionId,
-          query: searchQuery,
-          translatedQuery: searchQuery !== message ? searchQuery : null,
-          language,
-          resultsCount: thumbnails.length,
-          topResultUrl: resourceUrl,
-          topResultName: portalResults[0]?.title || "",
-        });
-
-        console.log(`✅ === OCRC-PRIORITY SEARCH COMPLETE ===\n`);
-
-        return {
-          response: responseMessage,
-          resourceUrl,
-          resourceName: portalResults.length > 0 ? `${portalResults.length} resources found` : "",
-          resourceDescription: portalResults.slice(0, 3).map(r => r.title).join("\n"),
-          suggestions: [],
-          searchType: portalResults.length > 0 ? "direct_search" : "no_results",
-          thumbnails,
-        };
+        console.log(`✅ === SEARCH COMPLETE ===\n`);
+        return { response: responseMessage, resourceUrl, resourceName: portalResults.length > 0 ? `${portalResults.length} resources found` : "",
+          resourceDescription: portalResults.slice(0, 3).map(r => r.title).join("\n"), suggestions: [], searchType: portalResults.length > 0 ? "direct_search" : "no_results", thumbnails };
       }),
   }),
 });
