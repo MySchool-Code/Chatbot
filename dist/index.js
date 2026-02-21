@@ -745,7 +745,35 @@ var SKIP_WORDS = /* @__PURE__ */ new Set([
   "because",
   "with",
   "from",
-  "of"
+  "of",
+  // Animal names that should never be corrected
+  "monkey",
+  "lion",
+  "tiger",
+  "elephant",
+  "dog",
+  "cat",
+  "bird",
+  "fish",
+  "cow",
+  "horse",
+  "bear",
+  "snake",
+  "frog",
+  "deer",
+  "rabbit",
+  "parrot",
+  "peacock",
+  "eagle",
+  "owl",
+  "giraffe",
+  "zebra",
+  "panda",
+  "koala",
+  "kangaroo",
+  "crocodile",
+  "turtle",
+  "dolphin"
 ]);
 function correctSpelling(query) {
   const words = query.toLowerCase().split(/\s+/);
@@ -1174,10 +1202,6 @@ var OCRC_CATEGORIES = {
   "vehicles": { path: "/views/sections/imagebank/vehicles", mu: 0 },
   "puzzles": { path: "/views/sections/puzzles-riddles", mu: 0 }
 };
-var ANIMAL_KEYWORDS = ["monkey", "dog", "cat", "elephant", "lion", "tiger", "cow", "horse", "rabbit", "bear", "deer", "giraffe", "zebra", "snake", "frog", "camel", "goat", "sheep", "pig", "fox", "wolf", "cheetah", "leopard", "panda", "koala", "kangaroo", "crocodile", "turtle"];
-var BIRD_KEYWORDS = ["parrot", "peacock", "sparrow", "crow", "eagle", "owl", "pigeon", "duck", "hen", "penguin"];
-var INSECT_KEYWORDS = ["butterfly", "bee", "ant", "spider", "grasshopper", "dragonfly", "ladybug"];
-var FISH_KEYWORDS = ["fish", "fishes", "shark", "whale", "dolphin", "octopus", "jellyfish", "crab"];
 var SUBJECT_MU = {
   "english": 0,
   "eng": 0,
@@ -1267,15 +1291,6 @@ function buildSmartUrl(query, classNum, subjectMu) {
   if (OCRC_CATEGORIES[lowerQuery]) {
     return `${BASE_URL}${OCRC_CATEGORIES[lowerQuery].path}?main=2&mu=${OCRC_CATEGORIES[lowerQuery].mu}`;
   }
-  for (const [cat, config] of Object.entries(OCRC_CATEGORIES)) {
-    if (lowerQuery.includes(cat) || cat.includes(lowerQuery)) {
-      return `${BASE_URL}${config.path}?main=2&mu=${config.mu}`;
-    }
-  }
-  if (ANIMAL_KEYWORDS.some((a) => lowerQuery.includes(a))) return `${BASE_URL}/views/academic/imagebank/animals?main=2&mu=0`;
-  if (BIRD_KEYWORDS.some((b) => lowerQuery.includes(b))) return `${BASE_URL}/views/academic/imagebank/birds?main=2&mu=1`;
-  if (INSECT_KEYWORDS.some((i) => lowerQuery.includes(i))) return `${BASE_URL}/views/academic/imagebank/insects?main=2&mu=6`;
-  if (FISH_KEYWORDS.some((f) => lowerQuery.includes(f))) return `${BASE_URL}/views/academic/imagebank/animals/sea-animals?main=2&mu=0`;
   const age = parseAge(lowerQuery);
   if (age && AGE_TO_CLASS[age]) {
     const className = AGE_TO_CLASS[age];

@@ -26,11 +26,11 @@ function levenshtein(a: string, b: string): number {
   if (a === b) return 0;
   if (a.length === 0) return b.length;
   if (b.length === 0) return a.length;
-  
+
   const matrix: number[][] = [];
   for (let i = 0; i <= b.length; i++) matrix[i] = [i];
   for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
-  
+
   for (let i = 1; i <= b.length; i++) {
     for (let j = 1; j <= a.length; j++) {
       const cost = a[j - 1] === b[i - 1] ? 0 : 1;
@@ -104,7 +104,7 @@ const COMMON_WORDS: Record<string, string> = {
 };
 
 // Correct spelling using dictionary and fuzzy matching
-// Words to skip during spell correction (common English words)
+// Words to skip during spell correction (common English words and animal names)
 const SKIP_WORDS = new Set([
   'how', 'are', 'you', 'what', 'is', 'the', 'a', 'an', 'to', 'for', 'in', 'on', 'at',
   'it', 'this', 'that', 'can', 'do', 'does', 'did', 'will', 'would', 'could', 'should',
@@ -114,6 +114,10 @@ const SKIP_WORDS = new Set([
   'find', 'search', 'show', 'give', 'get', 'want', 'need', 'like', 'about',
   'class', 'grade', 'level', 'subject', 'topic', 'chapter', 'lesson',
   'and', 'or', 'but', 'if', 'then', 'so', 'because', 'with', 'from', 'of',
+  // Animal names that should never be corrected
+  'monkey', 'lion', 'tiger', 'elephant', 'dog', 'cat', 'bird', 'fish', 'cow', 'horse',
+  'bear', 'snake', 'frog', 'deer', 'rabbit', 'parrot', 'peacock', 'eagle', 'owl',
+  'giraffe', 'zebra', 'panda', 'koala', 'kangaroo', 'crocodile', 'turtle', 'dolphin',
 ]);
 
 function correctSpelling(query: string): string {
@@ -121,14 +125,14 @@ function correctSpelling(query: string): string {
   const corrected = words.map(word => {
     // Skip common English words that shouldn't be corrected
     if (SKIP_WORDS.has(word) || word.length <= 2) return word;
-    
+
     // Direct match in dictionary
     if (COMMON_WORDS[word]) return COMMON_WORDS[word];
-    
+
     // Fuzzy match - find best match from dictionary
     let bestMatch = word;
     let bestDistance = 2; // reduced threshold to prevent over-correction
-    
+
     for (const [misspelled, correct] of Object.entries(COMMON_WORDS)) {
       const dist = levenshtein(word, misspelled);
       if (dist < bestDistance) {
@@ -142,7 +146,7 @@ function correctSpelling(query: string): string {
         bestMatch = correct;
       }
     }
-    
+
     // Phonetic matching as fallback
     if (bestMatch === word && word.length > 3) {
       const wordSoundex = soundex(word);
@@ -152,10 +156,10 @@ function correctSpelling(query: string): string {
         }
       }
     }
-    
+
     return bestMatch;
   });
-  
+
   return corrected.join(' ');
 }
 

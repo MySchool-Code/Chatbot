@@ -10,7 +10,6 @@ import { advancedSearch, enhanceSearchQuery } from "./advancedSearch";
 const BASE_URL = "https://portal.myschoolct.com";
 const PORTAL_API = "https://portal.myschoolct.com/api/rest/search/global";
 
-// One Click Resource Center (OCRC) categories - PRIORITY SEARCH
 const OCRC_CATEGORIES: Record<string, { path: string; mu: number }> = {
   'animals': { path: '/views/academic/imagebank/animals', mu: 0 },
   'animal': { path: '/views/academic/imagebank/animals', mu: 0 },
@@ -35,13 +34,6 @@ const OCRC_CATEGORIES: Record<string, { path: string; mu: number }> = {
   'puzzles': { path: '/views/sections/puzzles-riddles', mu: 0 },
 };
 
-// Animal keywords
-const ANIMAL_KEYWORDS = ['monkey', 'dog', 'cat', 'elephant', 'lion', 'tiger', 'cow', 'horse', 'rabbit', 'bear', 'deer', 'giraffe', 'zebra', 'snake', 'frog', 'camel', 'goat', 'sheep', 'pig', 'fox', 'wolf', 'cheetah', 'leopard', 'panda', 'koala', 'kangaroo', 'crocodile', 'turtle'];
-const BIRD_KEYWORDS = ['parrot', 'peacock', 'sparrow', 'crow', 'eagle', 'owl', 'pigeon', 'duck', 'hen', 'penguin'];
-const INSECT_KEYWORDS = ['butterfly', 'bee', 'ant', 'spider', 'grasshopper', 'dragonfly', 'ladybug'];
-const FISH_KEYWORDS = ['fish', 'fishes', 'shark', 'whale', 'dolphin', 'octopus', 'jellyfish', 'crab'];
-
-// Subject mu values - VERIFIED: maths = mu=4
 const SUBJECT_MU: Record<string, number> = {
   'english': 0, 'eng': 0,
   'hindi': 1,
@@ -56,7 +48,6 @@ const SUBJECT_MU: Record<string, number> = {
   'charts': 10, 'chart': 10,
 };
 
-// Age to class mapping: Age 6 = Class 1, Age 8 = Class 3
 const AGE_TO_CLASS: Record<number, string> = {
   3: 'nursery', 4: 'lkg', 5: 'ukg',
   6: 'class-1', 7: 'class-2', 8: 'class-3', 9: 'class-4', 10: 'class-5',
@@ -123,32 +114,16 @@ function parseAge(query: string): number | null {
   return ageMatch ? parseInt(ageMatch[1]) : null;
 }
 
-/**
- * Build URL with correct format:
- * - OCRC: /views/academic/imagebank/animals?main=2&mu=0
- * - Class: /views/academic/class/class-1
- * - Class+Subject: /views/academic/class/class-1?main=0&mu=4
- */
 function buildSmartUrl(query: string, classNum: number | null, subjectMu: number | null): string {
   const lowerQuery = query.toLowerCase().trim();
-  
-  // PRIORITY 1: OCRC categories
+
+  // Only redirect to OCRC for exact category matches (e.g., "animals", "birds")
+  // Specific items like "monkey", "lion" should go to search results
   if (OCRC_CATEGORIES[lowerQuery]) {
     return `${BASE_URL}${OCRC_CATEGORIES[lowerQuery].path}?main=2&mu=${OCRC_CATEGORIES[lowerQuery].mu}`;
   }
-  for (const [cat, config] of Object.entries(OCRC_CATEGORIES)) {
-    if (lowerQuery.includes(cat) || cat.includes(lowerQuery)) {
-      return `${BASE_URL}${config.path}?main=2&mu=${config.mu}`;
-    }
-  }
-  
-  // Animal/Bird/Insect/Fish keywords → OCRC
-  if (ANIMAL_KEYWORDS.some(a => lowerQuery.includes(a))) return `${BASE_URL}/views/academic/imagebank/animals?main=2&mu=0`;
-  if (BIRD_KEYWORDS.some(b => lowerQuery.includes(b))) return `${BASE_URL}/views/academic/imagebank/birds?main=2&mu=1`;
-  if (INSECT_KEYWORDS.some(i => lowerQuery.includes(i))) return `${BASE_URL}/views/academic/imagebank/insects?main=2&mu=6`;
-  if (FISH_KEYWORDS.some(f => lowerQuery.includes(f))) return `${BASE_URL}/views/academic/imagebank/animals/sea-animals?main=2&mu=0`;
-  
-  // PRIORITY 2: Age-based navigation (Age 6 = Class 1, Age 8 = Class 3)
+
+  // Age-based navigation (Age 6 = Class 1, Age 8 = Class 3)
   const age = parseAge(lowerQuery);
   if (age && AGE_TO_CLASS[age]) {
     const className = AGE_TO_CLASS[age];
@@ -157,17 +132,16 @@ function buildSmartUrl(query: string, classNum: number | null, subjectMu: number
     }
     return `${BASE_URL}/views/academic/class/${className}`;
   }
-  
-  // PRIORITY 3: Class + Subject navigation
+
+  // Class + Subject navigation
   if (classNum && classNum >= 1 && classNum <= 10) {
     const className = `class-${classNum}`;
     if (subjectMu !== null) {
-      // URL format: /views/academic/class/class-1?main=0&mu=4
       return `${BASE_URL}/views/academic/class/${className}?main=0&mu=${subjectMu}`;
     }
     return `${BASE_URL}/views/academic/class/${className}`;
   }
-  
+
   // Kindergarten
   const kinderMatch = lowerQuery.match(/\b(nursery|lkg|ukg)\b/i);
   if (kinderMatch) {
@@ -177,8 +151,8 @@ function buildSmartUrl(query: string, classNum: number | null, subjectMu: number
     }
     return `${BASE_URL}/views/academic/class/${kinderClass}`;
   }
-  
-  // PRIORITY 4: Text search fallback
+
+  // Default to text search for specific items (monkey, lion, etc.)
   return `${BASE_URL}/views/result?text=${encodeURIComponent(query)}`;
 }
 
@@ -236,7 +210,7 @@ export const appRouter = router({
 
         // Parse class/subject
         const { classNum, subjectMu } = parseClassSubject(searchQuery);
-        
+
         // Build URL with correct format
         const resourceUrl = buildSmartUrl(searchQuery, classNum, subjectMu);
         console.log(`🔗 Smart URL: ${resourceUrl}`);
